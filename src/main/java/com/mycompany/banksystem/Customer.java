@@ -64,6 +64,18 @@ public class Customer implements Serializable {
     public Customer() {
     }
 
+    public Customer(String fname, String lname, String createdat, String email, String phone, String status, String nationalID, Collection<Account> accountCollection) {
+        this.fname = fname;
+        this.lname = lname;
+        this.createdat = createdat;
+        this.email = email;
+        this.phone = phone;
+        this.status = status;
+        this.nationalID = nationalID;
+        this.accountCollection = accountCollection;
+    }
+    
+
     public Customer(Integer customerID) {
         this.customerID = customerID;
     }

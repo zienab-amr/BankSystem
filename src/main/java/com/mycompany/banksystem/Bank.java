@@ -54,6 +54,13 @@ public class Bank implements Serializable {
 
     public Bank() {
     }
+    
+    public Bank(String bankName, String swiftCode, String country, String status) {
+        this.bankname = bankName;
+        this.swiftCode = swiftCode;
+        this.country = country;
+        this.status = status;
+    }
 
     public Bank(Integer bankID) {
         this.bankID = bankID;

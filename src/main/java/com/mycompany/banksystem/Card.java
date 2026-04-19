@@ -71,6 +71,19 @@ public class Card implements Serializable {
     public Card() {
     }
 
+    public Card(String cardtype, String maskednumber, Date expiryDate, String cvvHash, String status, BigDecimal dailyLimit, Date createdAt, Account accountID) {
+        this.cardtype = cardtype;
+        this.maskednumber = maskednumber;
+        this.expiryDate = expiryDate;
+        this.cvvHash = cvvHash;
+        this.status = status;
+        this.dailyLimit = dailyLimit;
+        this.createdAt = createdAt;
+        this.accountID = accountID;
+    }
+    
+    
+
     public Card(Integer cardID) {
         this.cardID = cardID;
     }

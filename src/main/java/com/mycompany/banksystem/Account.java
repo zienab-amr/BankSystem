@@ -72,6 +72,19 @@ public class Account implements Serializable {
     public Account() {
     }
 
+    public Account(String accountType, BigDecimal balance, String currency, String status, Date openedat, Customer customerID, Bank bankID, Collection<Card> cardCollection) {
+        this.accountType = accountType;
+        this.balance = balance;
+        this.currency = currency;
+        this.status = status;
+        this.openedat = openedat;
+        this.customerID = customerID;
+        this.bankID = bankID;
+        this.cardCollection = cardCollection;
+    }
+    
+    
+
     public Account(Integer accountID) {
         this.accountID = accountID;
     }
