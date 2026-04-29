@@ -5,7 +5,7 @@
 package com.mycompany.banksystem;
 
 import java.io.Serializable;
-import java.util.Collection;
+import java.util.*;
 import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -75,7 +75,13 @@ public class Customer implements Serializable {
         this.accountCollection = accountCollection;
     }
     
+public void addAccount(Account account) {
+    if (accountCollection == null)
+        accountCollection = new ArrayList<>();
 
+    accountCollection.add(account);
+    account.setCustomerID(this);
+}
     public Customer(Integer customerID) {
         this.customerID = customerID;
     }

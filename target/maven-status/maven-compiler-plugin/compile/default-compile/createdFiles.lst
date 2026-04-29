@@ -1,0 +1,8 @@
+com\mycompany\banksystem\Bank.class
+com\mycompany\banksystem\BankService.class
+com\mycompany\banksystem\Card.class
+com\mycompany\banksystem\Centralbank.class
+com\mycompany\banksystem\Customer.class
+com\mycompany\banksystem\BankSystem.class
+com\mycompany\banksystem\Account.class
+com\mycompany\banksystem\DataSeeder.class

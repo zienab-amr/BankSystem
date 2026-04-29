@@ -18,7 +18,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
-
+import javax.persistence.*;
 /**
  *
  * @author Royal
@@ -51,15 +51,31 @@ public class Bank implements Serializable {
     private String status;
     @OneToMany(mappedBy = "bankID")
     private Collection<Account> accountCollection;
-
+    @ManyToOne
+    @JoinColumn(name = "CentralBank_ID", nullable = false)
+    private Centralbank centralBankID;
     public Bank() {
     }
     
-    public Bank(String bankName, String swiftCode, String country, String status) {
-        this.bankname = bankName;
+    public Bank(String bankname, String swiftCode, String country, String status, Centralbank centralBank) {
+        this.bankname = bankname;
         this.swiftCode = swiftCode;
         this.country = country;
         this.status = status;
+     
+        this.centralBankID = centralBank;
+    }
+
+    public void setCentralBank(Centralbank centralBank) {
+        this.centralBankID = centralBank;
+    }
+
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
+    }
+
+    public Centralbank getCentralBank() {
+        return centralBankID;
     }
 
     public Bank(Integer bankID) {

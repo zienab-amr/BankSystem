@@ -7,7 +7,7 @@ package com.mycompany.banksystem;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.Date;
+import java.util.*;
 import javax.persistence.Basic;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -24,7 +24,7 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
-
+import javax.persistence.CascadeType;
 /**
  *
  * @author Royal
@@ -66,7 +66,7 @@ public class Account implements Serializable {
     @JoinColumn(name = "Bank_ID", referencedColumnName = "Bank_ID")
     @ManyToOne
     private Bank bankID;
-    @OneToMany(mappedBy = "accountID")
+    @OneToMany(mappedBy = "accountID", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private Collection<Card> cardCollection;
 
     public Account() {
@@ -149,6 +149,10 @@ public class Account implements Serializable {
         return bankID;
     }
 
+    public static long getSerialVersionUID() {
+        return serialVersionUID;
+    }
+
     public void setBankID(Bank bankID) {
         this.bankID = bankID;
     }
@@ -161,7 +165,13 @@ public class Account implements Serializable {
     public void setCardCollection(Collection<Card> cardCollection) {
         this.cardCollection = cardCollection;
     }
+    public void addCard(Card card) {
+    if (cardCollection == null)
+        cardCollection = new ArrayList<>();
 
+    cardCollection.add(card);
+    card.setAccountID(this);
+}
     @Override
     public int hashCode() {
         int hash = 0;

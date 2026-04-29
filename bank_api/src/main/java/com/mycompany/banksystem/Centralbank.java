@@ -57,7 +57,7 @@ public class Centralbank implements Serializable {
 
     public Centralbank() {
     }
-
+    
     public Centralbank(String name, String country, String regulatoryCode, BigDecimal riskThreshold, String monitoringLevel, String status) {
         this.name = name;
         this.country = country;

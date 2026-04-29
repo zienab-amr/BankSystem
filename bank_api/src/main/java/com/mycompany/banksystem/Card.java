@@ -33,7 +33,7 @@ import javax.xml.bind.annotation.XmlRootElement;
     @NamedQuery(name = "Card.findAll", query = "SELECT c FROM Card c"),
     @NamedQuery(name = "Card.findByCardID", query = "SELECT c FROM Card c WHERE c.cardID = :cardID"),
     @NamedQuery(name = "Card.findByCardtype", query = "SELECT c FROM Card c WHERE c.cardtype = :cardtype"),
-    @NamedQuery(name = "Card.findByMaskednumber", query = "SELECT c FROM Card c WHERE c.maskednumber = :maskednumber"),
+    @NamedQuery(name = "Card.findByMaskednumber", query = "SELECT c FROM Card c WHERE c.maskedNumber = :maskednumber"),
     @NamedQuery(name = "Card.findByExpiryDate", query = "SELECT c FROM Card c WHERE c.expiryDate = :expiryDate"),
     @NamedQuery(name = "Card.findByCvvHash", query = "SELECT c FROM Card c WHERE c.cvvHash = :cvvHash"),
     @NamedQuery(name = "Card.findByStatus", query = "SELECT c FROM Card c WHERE c.status = :status"),
@@ -50,7 +50,7 @@ public class Card implements Serializable {
     @Column(name = "Card_type")
     private String cardtype;
     @Column(name = "Masked_number")
-    private String maskednumber;
+    private String maskedNumber;
     @Column(name = "expiry_date")
     @Temporal(TemporalType.DATE)
     private Date expiryDate;
@@ -71,9 +71,9 @@ public class Card implements Serializable {
     public Card() {
     }
 
-    public Card(String cardtype, String maskednumber, Date expiryDate, String cvvHash, String status, BigDecimal dailyLimit, Date createdAt, Account accountID) {
+    public Card(String cardtype, String maskedNumber, Date expiryDate, String cvvHash, String status, BigDecimal dailyLimit, Date createdAt, Account accountID) {
         this.cardtype = cardtype;
-        this.maskednumber = maskednumber;
+        this.maskedNumber = maskedNumber;
         this.expiryDate = expiryDate;
         this.cvvHash = cvvHash;
         this.status = status;
@@ -104,12 +104,12 @@ public class Card implements Serializable {
         this.cardtype = cardtype;
     }
 
-    public String getMaskednumber() {
-        return maskednumber;
+    public String getMaskedNumber() {
+        return maskedNumber;
     }
 
-    public void setMaskednumber(String maskednumber) {
-        this.maskednumber = maskednumber;
+    public void setMaskedNumber(String maskednumber) {
+        this.maskedNumber = maskednumber;
     }
 
     public Date getExpiryDate() {
