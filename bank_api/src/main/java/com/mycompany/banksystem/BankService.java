@@ -36,21 +36,34 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+            
+            // ✅ هات البنك المركزي (ID = 1) من قاعدة البيانات
+            Centralbank centralBank = em.find(Centralbank.class, 1);
+            
+            // ✅ حطه للبنك الجديد (تلقائياً)
+            if (centralBank != null) {
+                bank.setCentralBank(centralBank);
+                System.out.println("✅ CentralBank ID = 1 assigned automatically");
+            } else {
+                System.out.println("⚠️ CentralBank not found, bank added without it");
+            }
+            
             em.persist(bank); 
             em.getTransaction().commit();
-            System.out.println("Bank inserted successfully into the database!");
+            System.out.println("✅ Bank inserted successfully into the database!");
+            
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
             e.printStackTrace();
-            System.out.println("Error occurred while inserting the Bank.");
+            System.out.println("❌ Error occurred while inserting the Bank: " + e.getMessage());
         } finally {
             em.close();
         }
     }
     
-      public void insertCard(Card card) {
+    public void insertCard(Card card) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -69,7 +82,7 @@ public class BankService {
     }
     
       
-        public void insertCentralBank(Centralbank centralbank) {
+    public void insertCentralBank(Centralbank centralbank) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -86,7 +99,8 @@ public class BankService {
             em.close();
         }
     }
-        public void insertCustomer(Customer customer) {
+    
+    public void insertCustomer(Customer customer) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -108,10 +122,7 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
-            
-            // دالة merge هي المسئولة عن التعديل (Update) في الـ ODB
             em.merge(account); 
-            
             em.getTransaction().commit();
             System.out.println("Account updated successfully in the database!");
         } catch (Exception e) {
@@ -125,7 +136,6 @@ public class BankService {
         }
     }
 
-    
     public void updateBank(Bank bank) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -144,7 +154,7 @@ public class BankService {
         }
     }
 
-        public void updateCard(Card card) {
+    public void updateCard(Card card) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -162,7 +172,7 @@ public class BankService {
         }
     }
 
-        public void updateCentralBank(Centralbank centralbank) {
+    public void updateCentralBank(Centralbank centralbank) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -180,7 +190,7 @@ public class BankService {
         }
     }
 
-       public void updateCustomer(Customer customer) {
+    public void updateCustomer(Customer customer) {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -202,18 +212,13 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
-            
-            // 1. بندور على الحساب بالـ ID
             Account account = em.find(Account.class, accountId);
-            
-            // 2. لو لقاه، يمسحه
             if (account != null) {
                 em.remove(account); 
                 System.out.println("Account deleted successfully from the database!");
             } else {
                 System.out.println("Account with ID " + accountId + " not found!");
             }
-            
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
@@ -226,7 +231,6 @@ public class BankService {
         }
     }
 
-    
     public void deleteBank(int bankId) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -273,7 +277,6 @@ public class BankService {
         }
     }
 
-    
     public void deleteCentralBank(int centralBankId) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -297,7 +300,6 @@ public class BankService {
         }
     }
 
-    
     public void deleteCustomer(int customerId) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -322,11 +324,9 @@ public class BankService {
     }
     
     // ==========================================
-    // 6 Complex Queries (JPQL - ODB Mapping)
+    // COMPLEX QUERIES (JPQL - ODB Mapping)
     // ==========================================
 
-    // 1. Join 3 Tables (Customer + Account + Card)
-    // الفكرة: استخراج بيانات العملاء (الاسم والتليفون) اللي عندهم كروت حالتها "نشطة" (active)
     public void getActiveCardsWithCustomerDetails() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -342,8 +342,6 @@ public class BankService {
         }
     }
 
-    // 2. Aggregate Function (SUM) + Join (Account + Bank)
-    // الفكرة: حساب إجمالي الأموال (السيولة) المودعة في كل بنك على حدة
     public void getTotalBalancePerBank() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -359,9 +357,7 @@ public class BankService {
         }
     }
 
-    // 3. Filtering with Parameters + Join (Customer + Account)
-    // الفكرة: البحث عن كبار العملاء (VIP) اللي رصيدهم بيتخطى مبلغ معين يتم تمريره للدالة
-    public void getVIPCustomers(BigDecimal  minBalance) {
+    public void getVIPCustomers(BigDecimal minBalance) {
         EntityManager em = emf.createEntityManager();
         try {
             String jpql = "SELECT c.fname, c.lname, a.balance, a.accountType FROM Account a JOIN a.customerID c WHERE a.balance >= :balance";
@@ -376,8 +372,6 @@ public class BankService {
         }
     }
 
-    // 4. Join (Bank + CentralBank) with Multiple Conditions
-    // الفكرة: معرفة البنوك النشطة التي تقع تحت رقابة "عالية" (high monitoring) من البنك المركزي
     public void getHighRiskActiveBanks() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -393,8 +387,6 @@ public class BankService {
         }
     }
 
-    // 5. Aggregate Function (COUNT) + Group By + Join (Account + Customer)
-    // الفكرة: تقرير إحصائي يوضح كل عميل يمتلك كم حساب بنكي في النظام
     public void countAccountsPerCustomer() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -410,8 +402,6 @@ public class BankService {
         }
     }
 
-    // 6. Complex 3-Table Join (Card + Account + Bank)
-    // الفكرة: استخراج كروت الـ Credit المرتبطة ببنوك معينة (مثل البنك الأهلي)
     public void getCreditCardsByBankName(String targetBankName) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -426,208 +416,134 @@ public class BankService {
             em.close();
         }
     }
+    
     public void rankBanksByPerformance() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        String jpql =
-            "SELECT b.bankname, " +
-            "COUNT(a), " +
-            "SUM(a.balance) " +
-            "FROM Bank b " +
-            "LEFT JOIN b.accountCollection a " +
-            "GROUP BY b.bankname " +
-            "ORDER BY SUM(a.balance) DESC";
-
-        List<Object[]> results = em.createQuery(jpql).getResultList();
-
-        System.out.println("--- Bank Performance Ranking ---");
-        int rank = 1;
-
-        for (Object[] row : results) {
-            System.out.println(
-                "#" + rank++ +
-                " Bank: " + row[0] +
-                " | Accounts: " + row[1] +
-                " | Total Balance: " + row[2]
-            );
+        EntityManager em = emf.createEntityManager();
+        try {
+            String jpql = "SELECT b.bankname, COUNT(a), SUM(a.balance) FROM Bank b LEFT JOIN b.accountCollection a GROUP BY b.bankname ORDER BY SUM(a.balance) DESC";
+            List<Object[]> results = em.createQuery(jpql).getResultList();
+            
+            System.out.println("--- Bank Performance Ranking ---");
+            int rank = 1;
+            for (Object[] row : results) {
+                System.out.println("#" + rank++ + " Bank: " + row[0] + " | Accounts: " + row[1] + " | Total Balance: " + row[2]);
+            }
+        } finally {
+            em.close();
         }
-
-    } finally {
-        em.close();
     }
     
-}
     public void getHighRiskCustomers() {
-    EntityManager em = emf.createEntityManager();
-
-    try {
-        String jpql =
-            "SELECT c.fname, c.lname, " +
-            "COUNT(DISTINCT a.accountID), " +
-            "COUNT(DISTINCT cr.cardID), " +
-            "SUM(a.balance) " +
-            "FROM Customer c " +
-            "LEFT JOIN c.accountCollection a " +
-            "LEFT JOIN a.cardCollection cr " +
-            "GROUP BY c.customerID, c.fname, c.lname " +
-            "HAVING COUNT(DISTINCT a.accountID) > 1 " +
-            "OR COUNT(DISTINCT cr.cardID) > 2 " +
-            "OR SUM(a.balance) < 1000";
-
-        List<Object[]> results = em.createQuery(jpql).getResultList();
-
-        System.out.println("--- HIGH RISK CUSTOMERS ---");
-
-        for (Object[] row : results) {
-            System.out.println(
-                "Name: " + row[0] + " " + row[1] +
-                " | Accounts: " + row[2] +
-                " | Cards: " + row[3] +
-                " | Total Balance: " + row[4]
-            );
+        EntityManager em = emf.createEntityManager();
+        try {
+            String jpql = "SELECT c.fname, c.lname, COUNT(DISTINCT a.accountID), COUNT(DISTINCT cr.cardID), SUM(a.balance) " +
+                         "FROM Customer c LEFT JOIN c.accountCollection a LEFT JOIN a.cardCollection cr " +
+                         "GROUP BY c.customerID, c.fname, c.lname " +
+                         "HAVING COUNT(DISTINCT a.accountID) > 1 OR COUNT(DISTINCT cr.cardID) > 2 OR SUM(a.balance) < 1000";
+            List<Object[]> results = em.createQuery(jpql).getResultList();
+            
+            System.out.println("--- HIGH RISK CUSTOMERS ---");
+            for (Object[] row : results) {
+                System.out.println("Name: " + row[0] + " " + row[1] + " | Accounts: " + row[2] + " | Cards: " + row[3] + " | Total Balance: " + row[4]);
+            }
+        } finally {
+            em.close();
         }
-
-    } finally {
-        em.close();
     }
-}
-                 //****************//
     
     public void getRecentAccountsActivity() {
-    EntityManager em = emf.createEntityManager();
-
-    try {
-        String jpql =
-            "SELECT c.fname, c.lname, a.accountType, a.balance, a.openedat " +
-            "FROM Account a " +
-            "JOIN a.customerID c " +
-            "WHERE a.openedat >= :dateThreshold " +
-            "ORDER BY a.openedat DESC";
-
-        Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
-
-        List<Object[]> results = em.createQuery(jpql)
-                .setParameter("dateThreshold", dateThreshold)
-                .getResultList();
-
-        System.out.println("--- Recent Accounts (Last 30 Days) ---");
-
-        for (Object[] row : results) {
-            System.out.println(
-                "Customer: " + row[0] + " " + row[1] +
-                " | Type: " + row[2] +
-                " | Balance: " + row[3] +
-                " | Opened At: " + row[4]
-            );
+        EntityManager em = emf.createEntityManager();
+        try {
+            Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
+            String jpql = "SELECT c.fname, c.lname, a.accountType, a.balance, a.openedat FROM Account a JOIN a.customerID c WHERE a.openedat >= :dateThreshold ORDER BY a.openedat DESC";
+            List<Object[]> results = em.createQuery(jpql).setParameter("dateThreshold", dateThreshold).getResultList();
+            
+            System.out.println("--- Recent Accounts (Last 30 Days) ---");
+            for (Object[] row : results) {
+                System.out.println("Customer: " + row[0] + " " + row[1] + " | Type: " + row[2] + " | Balance: " + row[3] + " | Opened At: " + row[4]);
+            }
+        } finally {
+            em.close();
         }
-
-    } finally {
-        em.close();
     }
-}
+    
     public void getRecentCardsActivity() {
-    EntityManager em = emf.createEntityManager();
-
-    try {
-        String jpql =
-            "SELECT c.fname, c.lname, cr.cardtype, cr.status, cr.createdAt " +
-            "FROM Card cr " +
-            "JOIN cr.accountID a " +
-            "JOIN a.customerID c " +
-            "WHERE cr.createdAt >= :dateThreshold " +
-            "ORDER BY cr.createdAt DESC";
-
-        Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
-
-        List<Object[]> results = em.createQuery(jpql)
-                .setParameter("dateThreshold", dateThreshold)
-                .getResultList();
-
-        System.out.println("--- Recent Cards (Last 30 Days) ---");
-
-        for (Object[] row : results) {
-            System.out.println(
-                "Customer: " + row[0] + " " + row[1] +
-                " | Card: " + row[2] +
-                " | Status: " + row[3] +
-                " | Created At: " + row[4]
-            );
+        EntityManager em = emf.createEntityManager();
+        try {
+            Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
+            String jpql = "SELECT c.fname, c.lname, cr.cardtype, cr.status, cr.createdAt FROM Card cr JOIN cr.accountID a JOIN a.customerID c WHERE cr.createdAt >= :dateThreshold ORDER BY cr.createdAt DESC";
+            List<Object[]> results = em.createQuery(jpql).setParameter("dateThreshold", dateThreshold).getResultList();
+            
+            System.out.println("--- Recent Cards (Last 30 Days) ---");
+            for (Object[] row : results) {
+                System.out.println("Customer: " + row[0] + " " + row[1] + " | Card: " + row[2] + " | Status: " + row[3] + " | Created At: " + row[4]);
+            }
+        } finally {
+            em.close();
         }
+    }
+    
+    public Account getAnyAccount() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Account.findAll", Account.class).setMaxResults(1).getSingleResult();
+        } finally {
+            em.close();
+        }
+    }
 
-    } finally {
-        em.close();
+    public Customer getAnyCustomer() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Customer.findAll", Customer.class).setMaxResults(1).getSingleResult();
+        } finally {
+            em.close();
+        }
     }
-}
-   public Account getAnyAccount() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Account.findAll", Account.class)
-                 .setMaxResults(1)
-                 .getSingleResult();
-    } finally {
-        em.close();
-    }
-}
 
-public Customer getAnyCustomer() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Customer.findAll", Customer.class)
-                 .setMaxResults(1)
-                 .getSingleResult();
-    } finally {
-        em.close();
+    public Bank getAnyBank() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Bank.findAll", Bank.class).setMaxResults(1).getSingleResult();
+        } finally {
+            em.close();
+        }
     }
-}
 
-public Bank getAnyBank() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Bank.findAll", Bank.class)
-                 .setMaxResults(1)
-                 .getSingleResult();
-    } finally {
-        em.close();
+    public Card getAnyCard() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Card.findAll", Card.class).setMaxResults(1).getSingleResult();
+        } finally {
+            em.close();
+        }
     }
-}
 
-public Card getAnyCard() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Card.findAll", Card.class)
-                 .setMaxResults(1)
-                 .getSingleResult();
-    } finally {
-        em.close();
+    public Centralbank getAnyCentralBank() {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Centralbank.findAll", Centralbank.class).setMaxResults(1).getSingleResult();
+        } finally {
+            em.close();
+        }
     }
-}
 
-public Centralbank getAnyCentralBank() {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Centralbank.findAll", Centralbank.class)
-                 .setMaxResults(1)
-                 .getSingleResult();
-    } finally {
-        em.close();
+    public List<Bank> getBanksPaginated(int page, int pageSize) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createNamedQuery("Bank.findAll", Bank.class)
+                     .setFirstResult(page * pageSize)
+                     .setMaxResults(pageSize)
+                     .getResultList();
+        } finally {
+            em.close();
+        }
     }
-}
-
-public List<Bank> getBanksPaginated(int page, int pageSize) {
-    EntityManager em = emf.createEntityManager();
-    try {
-        return em.createNamedQuery("Bank.findAll", Bank.class)
-                 .setFirstResult(page * pageSize)
-                 .setMaxResults(pageSize)
-                 .getResultList();
-    } finally {
-        em.close();
+    
+    public void closeConnection() {
+        if (emf != null && emf.isOpen()) {
+            emf.close();
+            System.out.println("EntityManagerFactory closed successfully.");
+        }
     }
-}
-public void closeConnection() {
-    if (emf != null && emf.isOpen()) {
-        emf.close();
-        System.out.println("EntityManagerFactory closed successfully.");
-    }
-}
 }
