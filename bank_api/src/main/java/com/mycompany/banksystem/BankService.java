@@ -68,6 +68,7 @@ public class BankService {
         }
     }
     
+      
         public void insertCentralBank(Centralbank centralbank) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -607,6 +608,18 @@ public Centralbank getAnyCentralBank() {
         return em.createNamedQuery("Centralbank.findAll", Centralbank.class)
                  .setMaxResults(1)
                  .getSingleResult();
+    } finally {
+        em.close();
+    }
+}
+
+public List<Bank> getBanksPaginated(int page, int pageSize) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        return em.createNamedQuery("Bank.findAll", Bank.class)
+                 .setFirstResult(page * pageSize)
+                 .setMaxResults(pageSize)
+                 .getResultList();
     } finally {
         em.close();
     }
