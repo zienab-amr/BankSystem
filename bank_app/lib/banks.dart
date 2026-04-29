@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'add_bank.dart';
 
 // ─────────────────────────────────────────
 // MODEL
@@ -308,9 +309,15 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () {
-              // Navigate to Add Bank screen
-            },
+onTap: () async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const AddBankScreen()),
+  );
+  if (result == true) {
+    _refresh(); // تحديث القائمة بعد الإضافة
+  }
+},
             child: Container(
               width: 44,
               height: 44,
