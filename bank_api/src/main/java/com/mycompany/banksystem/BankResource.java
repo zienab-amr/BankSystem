@@ -1,24 +1,19 @@
 package com.mycompany.banksystem;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.util.List;
 
-@Path("/banks")
+@Path("/") // Base path for all resources in this class
 @Produces(MediaType.APPLICATION_JSON)
 public class BankResource {
 
     private final BankService service = new BankService();
 
+    // ================= BANK ENDPOINTS =================
+
     @GET
+    @Path("/banks")
     public Response getBanks(
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("pageSize") @DefaultValue("10") int pageSize) {
@@ -26,18 +21,36 @@ public class BankResource {
             List<Bank> banks = service.getBanksPaginated(page, pageSize);
             return Response.ok(banks).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity("Error fetching banks: " + e.getMessage()).build();
         }
     }
 
     @POST
+    @Path("/banks")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response addBank(Bank bank) {
         try {
             service.insertBank(bank);
             return Response.status(Response.Status.CREATED).entity(bank).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity("Error adding bank: " + e.getMessage()).build();
+        }
+    }
+
+    // ================= CUSTOMER ENDPOINTS =================
+
+    @GET
+    @Path("/customers") // Flutter should call: http://localhost:8080/api/customers?bankId=X
+    public Response getCustomersByBank(@QueryParam("bankId") int bankId) {
+        try {
+            System.out.println("🔥 API called for Customers with bankId: " + bankId);
+            List<Customer> customers = service.getCustomersByBankId(bankId);
+            
+            // If the list is empty, we still return 200 OK with an empty array []
+            return Response.ok(customers).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity("Error fetching customers: " + e.getMessage()).build();
         }
     }
 }

@@ -546,4 +546,19 @@ public class BankService {
             System.out.println("EntityManagerFactory closed successfully.");
         }
     }
+    
+    //fatma
+    public List<Customer> getCustomersByBankId(int bankId) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql = "SELECT DISTINCT c FROM Customer c " +
+                      "JOIN c.accountCollection a " +
+                      "WHERE a.bankID.bankID = :bankId";
+        return em.createQuery(jpql, Customer.class)
+                 .setParameter("bankId", bankId)
+                 .getResultList();
+    } finally {
+        em.close();
+    }
+}
 }

@@ -150,7 +150,7 @@ public void addAccount(Account account) {
         this.nationalID = nationalID;
     }
 
-    @XmlTransient
+@XmlTransient
     public Collection<Account> getAccountCollection() {
         return accountCollection;
     }

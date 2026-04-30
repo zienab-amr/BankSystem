@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'add_bank.dart';
+import 'add_account.dart';
+import 'edit_customer.dart';
+import 'add_customer.dart';
 
 // ─────────────────────────────────────────
 // MODEL
@@ -60,7 +63,7 @@ class BankRepository {
 }
 
 // ─────────────────────────────────────────
-// SCREEN
+// SCREEN (قائمة البنوك الرئيسية)
 // ─────────────────────────────────────────
 
 class BankDashboardScreen extends StatefulWidget {
@@ -78,9 +81,16 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
   int _currentPage = 0;
   bool _isLoading = false;
   bool _hasMore = true;
+  String _filter = 'All'; // 'All' | 'Active' | 'Inactive'
 
   int get _activeBanks => _banks.where((b) => b.isActive).length;
   int get _inactiveBanks => _banks.where((b) => !b.isActive).length;
+
+  List<BankModel> get _filteredBanks {
+    if (_filter == 'Active') return _banks.where((b) => b.isActive).toList();
+    if (_filter == 'Inactive') return _banks.where((b) => !b.isActive).toList();
+    return _banks;
+  }
 
   @override
   void initState() {
@@ -106,7 +116,7 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
   Future<void> _loadMore() async {
     if (_isLoading || !_hasMore) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final newBanks = await _repo.fetchBanks(page: _currentPage);
       setState(() {
@@ -161,8 +171,8 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index < _banks.length) {
-                        return _BankCard(bank: _banks[index]);
+                      if (index < _filteredBanks.length) {
+                        return _BankCard(bank: _filteredBanks[index]);
                       }
                       return _hasMore
                           ? const Padding(
@@ -179,7 +189,7 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
                               ),
                             );
                     },
-                    childCount: _banks.length + 1,
+                    childCount: _filteredBanks.length + 1,
                   ),
                 ),
               ),
@@ -243,15 +253,18 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard('Total', '${_banks.length}', const Color(0xFF111827)),
+          child: _buildStatCard(
+              'Total', '${_banks.length}', const Color(0xFF111827)),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildStatCard('Active', '$_activeBanks', const Color(0xFF2563EB)),
+          child: _buildStatCard(
+              'Active', '$_activeBanks', const Color(0xFF2563EB)),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: _buildStatCard('Inactive', '$_inactiveBanks', const Color(0xFFEF4444)),
+          child: _buildStatCard(
+              'Inactive', '$_inactiveBanks', const Color(0xFFEF4444)),
         ),
       ],
     );
@@ -268,7 +281,8 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              style:
+                  const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
@@ -287,37 +301,66 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.list_alt, size: 20, color: Color(0xFF374151)),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text('All Banks',
-                        style: TextStyle(
-                            fontSize: 13, color: Color(0xFF374151))),
-                  ),
-                  Icon(Icons.keyboard_arrow_down, color: Color(0xFF9CA3AF)),
-                ],
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _filter,
+                  icon: const Icon(Icons.keyboard_arrow_down,
+                      color: Color(0xFF9CA3AF)),
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF374151)),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _filter = value);
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'All',
+                      child: Row(children: [
+                        Icon(Icons.list_alt,
+                            size: 18, color: Color(0xFF374151)),
+                        SizedBox(width: 8),
+                        Text('All Banks'),
+                      ]),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Active',
+                      child: Row(children: [
+                        Icon(Icons.check_circle_outline,
+                            size: 18, color: Color(0xFF10B981)),
+                        SizedBox(width: 8),
+                        Text('Active'),
+                      ]),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Inactive',
+                      child: Row(children: [
+                        Icon(Icons.cancel_outlined,
+                            size: 18, color: Color(0xFFEF4444)),
+                        SizedBox(width: 8),
+                        Text('Inactive'),
+                      ]),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(width: 8),
           GestureDetector(
-onTap: () async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const AddBankScreen()),
-  );
-  if (result == true) {
-    _refresh(); // تحديث القائمة بعد الإضافة
-  }
-},
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddBankScreen()),
+              );
+              if (result == true) {
+                _refresh();
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
@@ -347,9 +390,16 @@ class _BankCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigator.push(context, MaterialPageRoute(
-        //   builder: (_) => BankDetailsScreen(bank: bank),
-        // ));
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BankDetailsScreen(
+              bankId: bank.id,
+              bankName: bank.name,
+              swiftCode: bank.swiftCode,
+            ),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -398,7 +448,8 @@ class _BankCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 0.5, thickness: 0.5, color: Color(0xFFF3F4F6)),
+            const Divider(
+                height: 0.5, thickness: 0.5, color: Color(0xFFF3F4F6)),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
               child: Row(
@@ -445,6 +496,425 @@ class _BankCard extends StatelessWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────
+// BANK DETAILS SCREEN
+// ─────────────────────────────────────────
+
+class BankDetailsScreen extends StatefulWidget {
+  final String bankId;
+  final String bankName;
+  final String swiftCode;
+
+  const BankDetailsScreen({
+    super.key,
+    required this.bankId,
+    required this.bankName,
+    required this.swiftCode,
+  });
+
+  @override
+  State<BankDetailsScreen> createState() => _BankDetailsScreenState();
+}
+
+class _BankDetailsScreenState extends State<BankDetailsScreen> {
+  List<Map<String, dynamic>> _customers = [];
+  bool _isLoadingCustomers = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomersForBank();
+  }
+
+  Future<void> _loadCustomersForBank() async {
+    setState(() => _isLoadingCustomers = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'http://localhost:8080/api/customers?bankId=${widget.bankId}'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _customers = data
+              .map((json) => {
+                    'id': json['customerID'].toString(),
+                    'name':
+                        '${json['fname'] ?? ''} ${json['lname'] ?? ''}'.trim(),
+                    'phone': json['phone'] ?? '',
+                    'accounts': json['accountsCount'] ?? 0,
+                    'balance': json['totalBalance']?.toString() ?? '0',
+                  })
+              .toList();
+          _isLoadingCustomers = false;
+        });
+      } else {
+        throw Exception('Failed to load customers');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingCustomers = false;
+        _customers = [];
+      });
+      print('Error loading customers: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to load customers: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF101D3D),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(35),
+                  bottomRight: Radius.circular(35),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.arrow_back, color: Colors.white),
+                        SizedBox(width: 10),
+                        Text("Back",
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 18)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(Icons.account_balance_rounded,
+                            color: Colors.white, size: 35),
+                      ),
+                      const SizedBox(width: 15),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.bankName,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold)),
+                          Text(widget.swiftCode,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 14)),
+                        ],
+                      )
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -25),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _topActionButton(
+                            label: "Add\nCustomer",
+                            icon: Icons.person_add_alt_1_outlined,
+                            color: const Color(0xFF10B981),
+                            onTap: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddCustomerScreen()),
+                              );
+                              if (result == true) {
+                                _loadCustomersForBank();
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          _topActionButton(
+                            label: "Add Account",
+                            icon: Icons.credit_card,
+                            color: const Color(0xFF3B82F6),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AddAccountScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 25),
+                      Row(
+                        children: [
+                          const Icon(Icons.people_outline,
+                              color: Color(0xFF3B82F6)),
+                          const SizedBox(width: 8),
+                          const Text("Customers",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                                color: Color(0xFF1E293B),
+                                shape: BoxShape.circle),
+                            child: Text("${_customers.length}",
+                                style: const TextStyle(
+                                    color: Color(0xFF3B82F6))),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      if (_isLoadingCustomers)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_customers.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Text(
+                                "No customers found for this bank",
+                                style: TextStyle(color: Colors.white70)),
+                          ),
+                        )
+                      else
+                        ..._customers
+                            .map((customer) => CustomerCard(
+                                  name: customer['name'],
+                                  phone: customer['phone'],
+                                  accounts: customer['accounts'],
+                                  balance: customer['balance'],
+                                ))
+                            .toList(),
+                      const SizedBox(height: 25),
+                      const Row(
+                        children: [
+                          Icon(Icons.analytics_outlined,
+                              color: Color(0xFF3B82F6)),
+                          SizedBox(width: 8),
+                          Text("Analytics & Reports",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      _analyticsButton("Show VIP Customers",
+                          const Color(0xFFF59E0B), const Color(0xFFEA580C), Icons.trending_up),
+                      const SizedBox(height: 12),
+                      _analyticsButton("Total Balance",
+                          const Color(0xFF10B981), const Color(0xFF059669), Icons.attach_money),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _topActionButton(
+      {required String label,
+      required IconData icon,
+      required Color color,
+      required VoidCallback onTap}) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: 100,
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 30),
+                const SizedBox(height: 8),
+                Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _analyticsButton(
+      String title, Color c1, Color c2, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [c1, c2]),
+          borderRadius: BorderRadius.circular(15)),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: Colors.white),
+          ),
+          const SizedBox(width: 15),
+          Text(title,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────
+// CUSTOMER CARD WIDGET
+// ─────────────────────────────────────────
+
+class CustomerCard extends StatelessWidget {
+  final String name;
+  final String phone;
+  final int accounts;
+  final String balance;
+
+  const CustomerCard(
+      {super.key,
+      required this.name,
+      required this.phone,
+      required this.accounts,
+      required this.balance});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(phone, style: TextStyle(color: Colors.grey[600])),
+                ],
+              ),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditCustomerScreen(
+                            initialName: name,
+                            initialPhone: phone,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Icon(Icons.edit_note, color: Colors.blue[700]),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.delete_outline, color: Colors.red),
+                ],
+              )
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              _infoBox("Accounts", accounts.toString(),
+                  const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
+              const SizedBox(width: 10),
+              _infoBox("Balance", balance, const Color(0xFFF0FDF4),
+                  const Color(0xFF16A34A)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBox(
+      String label, String value, Color bg, Color textCol) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+            color: bg, borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            Text(label,
+                style:
+                    const TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(value,
+                style: TextStyle(
+                    color: textCol,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),

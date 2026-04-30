@@ -42,7 +42,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
         body: jsonEncode({
           'bankname': _bankNameController.text.trim(),
           'swiftCode': _swiftCodeController.text.trim().toUpperCase(),
-          'country': 'Egypt',  // ✅ ثابتة مصر
+          'country': 'Egypt',
           'status': isActive ? 'active' : 'suspended',
         }),
       );
@@ -122,6 +122,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  // حقل اسم البنك
                   _buildInputCard(
                     title: "Bank Name",
                     icon: Icons.account_balance_outlined,
@@ -129,6 +130,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
                   ),
                   const SizedBox(height: 15),
 
+                  // حقل SWIFT Code
                   _buildInputCard(
                     title: "SWIFT Code",
                     icon: Icons.code,
@@ -138,14 +140,15 @@ class _AddBankScreenState extends State<AddBankScreen> {
                         _buildTextField(_swiftCodeController, "XXXXXXXX"),
                         const Padding(
                           padding: EdgeInsets.only(top: 8, left: 5),
-                          child: Text("8 or 11 characters (e.g., NBEGEHCX)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          child: Text("8 or 11 characters (e.g., NBEGEHCX)", 
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 15),
 
-                  // ✅ حقل الدولة (مقروء فقط "Egypt")
+                  // حقل الدولة (ثابت مصر)
                   _buildInputCard(
                     title: "Country",
                     icon: Icons.public,
@@ -167,6 +170,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
                   ),
                   const SizedBox(height: 15),
 
+                  // حقل الحالة
                   _buildInputCard(
                     title: "Status",
                     icon: Icons.check_circle_outline,
@@ -180,6 +184,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
                   ),
                   const SizedBox(height: 30),
 
+                  // زر الإضافة
                   SizedBox(
                     width: double.infinity,
                     height: 55,
