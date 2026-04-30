@@ -3,8 +3,24 @@ import 'add_account.dart';
 import 'edit_customer.dart'; 
 import 'add_customer.dart';  
 
-class BankDashboardScreen extends StatelessWidget {
-  const BankDashboardScreen({super.key});
+class Bank2DashboardScreen extends StatefulWidget {
+  const Bank2DashboardScreen({super.key});
+
+  @override
+  State<Bank2DashboardScreen> createState() => _Bank2DashboardScreenState();
+}
+
+class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
+  // بنفترض إن الـ ID بتاع البنك ده هو 1 (لأن الصفحة ثابتة للبنك الأهلي)
+  final int currentBankId = 1; 
+
+  // الميثود المسؤولة عن تحديث البيانات
+  void _refreshData() {
+    setState(() {
+      // هنا مستقبلاً هتنادي الـ API اللي بيجيب البيانات من الـ Backend
+      print("Data Refreshed for Bank ID: $currentBankId");
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,12 +47,15 @@ class BankDashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.arrow_back, color: Colors.white),
-                      SizedBox(width: 10),
-                      Text("Back", style: TextStyle(color: Colors.white, fontSize: 18)),
-                    ],
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.arrow_back, color: Colors.white),
+                        SizedBox(width: 10),
+                        Text("Back", style: TextStyle(color: Colors.white, fontSize: 18)),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 25),
                   Row(
@@ -78,11 +97,12 @@ class BankDashboardScreen extends StatelessWidget {
                             label: "Add\nCustomer",
                             icon: Icons.person_add_alt_1_outlined,
                             color: const Color(0xFF10B981),
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
                               );
+                              _refreshData();
                             },
                           ),
                           const SizedBox(width: 12),
@@ -90,12 +110,16 @@ class BankDashboardScreen extends StatelessWidget {
                             label: "Add Account",
                             icon: Icons.credit_card,
                             color: const Color(0xFF3B82F6),
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              // بنستنى (await) الرجوع من الصفحة عشان نعمل ريفريش
+                              await Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const AddAccountScreen()),
-                                 );
-                                },
+                                MaterialPageRoute(
+                                  builder: (context) => AddAccountScreen(bankId: currentBankId), 
+                                ),
+                              );
+                              _refreshData(); // التحديث بيحصل هنا أول ما الـ pop يتم
+                            },
                           ),
                         ],
                       ),
@@ -124,7 +148,7 @@ class BankDashboardScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6)),
                           SizedBox(width: 8),
-                          Text("Analytics & Reports", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text("Analytics & Reports", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       const SizedBox(height: 15),
@@ -197,6 +221,16 @@ class CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, dynamic> customerMap = {
+      "id": "1",
+      "fname": name.split(" ")[0],
+      "lname": name.contains(" ") ? name.split(" ")[1] : "Customer",
+      "email": "${name.replaceAll(" ", "").toLowerCase()}@nbe.com.eg",
+      "phone": phone,
+      "nationalID": "29901011234567",
+      "status": "verified"
+    };
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
@@ -213,7 +247,7 @@ class CustomerCard extends StatelessWidget {
                   Text(phone, style: TextStyle(color: Colors.grey[600])),
                 ],
               ),
-               Row(
+              Row(
                 children: [
                   GestureDetector(
                     onTap: () {
@@ -221,13 +255,12 @@ class CustomerCard extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditCustomerScreen(
-                            initialName:name ,   // هنا بنمرر متغير الـ name بتاع الكارت
-                            initialPhone:phone, // هنا بنمرر متغير الـ phone بتاع الكارت
+                            customer: customerMap,
                           ),
                         ),
                       );
                     },
-                    child: Icon(Icons.edit_note, color: Colors.blue[700]),
+                    child: Icon(Icons.edit_note, color: Colors.blue[700], size: 28),
                   ),
                   const SizedBox(width: 10),
                   const Icon(Icons.delete_outline, color: Colors.red),
