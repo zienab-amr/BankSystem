@@ -1,97 +1,116 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-// ودجت مخصصة لبناء حقول الإدخال البيضاء
 class AddAccountScreen extends StatefulWidget {
-  const AddAccountScreen({super.key});
+  final int bankId;
+
+  const AddAccountScreen({super.key, required this.bankId});
 
   @override
   State<AddAccountScreen> createState() => _AddAccountScreenState();
 }
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
-  // متغير لتخزين نوع الحساب المختار
+    final TextEditingController _balanceController = TextEditingController();
   String? _selectedAccountType;
-  
-  // قائمة بأنواع الحسابات (Dropdown)
-  final List<String> _accountTypes = [
-    'Savings Account',
-    'Current Account',
-    'Business Account',
-  ];
+  bool _isLoading = false;
+
+  List<dynamic> _customers = [];
+  int? _selectedCustomerId;
+
+  final List<String> _accountTypes = ['savings', 'current', 'business'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllCustomers();
+  }
+
+  // جلب كل العملاء
+  Future<void> _loadAllCustomers() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://127.0.0.1:8080/api/customers/all")
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _customers = jsonDecode(response.body);
+          });
+        }
+      } else {
+        debugPrint("Error: Failed to load customers");
+      }
+    } catch (e) {
+      debugPrint("Connection Error: $e");
+    }
+  }
+
+  // إرسال طلب إنشاء الحساب (التعديل هنا لربط الـ Hibernate صح)
+  Future<void> _createAccount() async {
+    if (_selectedCustomerId == null || _selectedAccountType == null || _balanceController.text.isEmpty) {
+      _showSnackBar("Please fill all fields!", Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // بناء الـ JSON كـ Nested Objects لإجبار السيرفر على جلب بيانات العميل كاملة
+      final Map<String, dynamic> payload = {
+        "accountType": _selectedAccountType,
+        "balance": double.tryParse(_balanceController.text) ?? 0.0,
+        "currency": "EGP",
+        "status": "Active",
+        "openedat": DateTime.now().toIso8601String(),
+        
+        // الربط بالعميل ككائن يحتوي على الـ ID
+        "customerID": _selectedCustomerId,
+        "bankID": widget.bankId
+      };
+
+      final response = await http.post(
+        Uri.parse("http://127.0.0.1:8080/api/account"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        _onSuccess();
+      } else {
+        _showSnackBar("❌ Server Error: ${response.statusCode}", Colors.red);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar("❌ Connection Error: $e", Colors.red);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _onSuccess() {
+    _showSnackBar("✅ Account added successfully!", Colors.green);
+    if (mounted) Navigator.pop(context, true);
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // نفس لون الخلفية الداكن
       backgroundColor: const Color(0xFF101D3D),
       body: SafeArea(
         child: Column(
           children: [
-            // ================= HEADER =================
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              decoration: const BoxDecoration(
-                // اللون الأزرق الفاتح من الصورة الجديدة
-                color: Color(0xFF2D7CFF), 
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(35),
-                  bottomRight: Radius.circular(35),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.arrow_back, color: Colors.white),
-                        SizedBox(width: 10),
-                        Text(
-                          "Back",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(Icons.credit_card,
-                            color: Colors.white, size: 35),
-                      ),
-                      const SizedBox(width: 15),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Add New Account",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Create a new bank account",
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                          ),
-                        ],
-                      )
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ================= FORM CONTENT =================
+            _buildHeader(),
             Expanded(
               child: Transform.translate(
                 offset: const Offset(0, -25),
@@ -99,30 +118,62 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      // 1. حقل اسم العميل
-                      _buildTextCard(
-                        label: "Customer Name",
-                        hint: "Enter customer name",
-                        icon: Icons.person_outline,
+                      // Dropdown للعملاء
+                      _buildCard(
+                        label: "Select Customer",
+                        icon: Icons.person_search_outlined,
+                        child: DropdownButtonFormField<int>(
+                          value: _selectedCustomerId,
+                          isExpanded: true,
+                          hint: const Text("Choose a customer"),
+                          items: _customers.map<DropdownMenuItem<int>>((c) {
+                            return DropdownMenuItem<int>(
+                              value: c["customerID"],
+                              child: Text("${c["fname"]} ${c["lname"]}"),
+                            );
+                          }).toList(),
+                          onChanged: (v) => setState(() => _selectedCustomerId = v),
+                          decoration: _inputDecoration(),
+                        ),
                       ),
+                      
                       const SizedBox(height: 20),
 
-                      // 2. حقل نوع الحساب (مع Dropdown)
-                      _buildDropdownCard(),
+                      // Dropdown لنوع الحساب
+                      _buildCard(
+                        label: "Account Type",
+                        icon: Icons.account_balance_wallet_outlined,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedAccountType,
+                          hint: const Text("Select type"),
+                          items: _accountTypes.map((s) => 
+                            DropdownMenuItem(value: s, child: Text(s.toUpperCase()))
+                          ).toList(),
+                          onChanged: (v) => setState(() => _selectedAccountType = v),
+                          decoration: _inputDecoration(),
+                        ),
+                      ),
+
                       const SizedBox(height: 20),
 
-                      // 3. حقل الرصيد الافتتاحي
-                      _buildTextCard(
+                      // حقل الرصيد
+                      _buildCard(
                         label: "Initial Balance (EGP)",
-                        hint: "0.00",
-                        icon: Icons.attach_money_outlined,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        icon: Icons.monetization_on_outlined,
+                        child: TextField(
+                          controller: _balanceController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: _inputDecoration(hint: "0.00"),
+                        ),
                       ),
-                      const SizedBox(height: 30),
 
-                      // ================= CREATE BUTTON =================
-                      _buildCreateButton(context),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 40),
+
+                      _isLoading 
+                        ? const CircularProgressIndicator(color: Color(0xFF2D7CFF))
+                        : _buildSubmitButton(),
+                      
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -134,162 +185,100 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     );
   }
 
-  // ودجت لبناء كروت حقول النص (Customer Name, Balance)
-  Widget _buildTextCard({
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildFieldHeader(label: label, icon: icon),
-          const SizedBox(height: 15),
-          TextField(
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.grey[50],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey[200]!),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // --- UI Helpers ---
 
-  // ودجت مخصصة لبناء كرت قائمة نوع الحساب (Account Type Dropdown)
-  Widget _buildDropdownCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildFieldHeader(label: "Account Type", icon: Icons.credit_card_outlined),
-          const SizedBox(height: 15),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedAccountType,
-                hint: const Text("Select type", style: TextStyle(color: Colors.grey)),
-                icon: const Icon(Icons.expand_more, color: Colors.grey),
-                isExpanded: true,
-                items: _accountTypes.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedAccountType = newValue;
-                  });
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ودجت صغيرة لبناء رأس الحقل (الأيقونة والعنوان الأزرق)
-  Widget _buildFieldHeader({required String label, required IconData icon}) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF2563EB), size: 20),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF1E293B),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // زر "Create Account" الأزرق
-  Widget _buildCreateButton(BuildContext context) {
+  Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      height: 60,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D7CFF), // اللون الأزرق من الصورة
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 45),
+      decoration: const BoxDecoration(
+        color: Color(0xFF2D7CFF),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(35),
+          bottomRight: Radius.circular(35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Row(
+              children: [
+                Icon(Icons.arrow_back, color: Colors.white),
+                SizedBox(width: 10),
+                Text("Back", style: TextStyle(color: Colors.white, fontSize: 18)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 25),
+          const Text(
+            "Account Registration",
+            style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+          ),
+          const Text(
+            "Link a customer to this bank office",
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
         ],
       ),
-      child: InkWell(
-        onTap: () {
-          // منطق إنشاء الحساب هنا
-          // يمكنك إضافة رسالة نجاح ثم العودة
-          // Navigator.pop(context);
-        },
-        borderRadius: BorderRadius.circular(15),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.save_outlined, color: Colors.white),
-            SizedBox(width: 10),
-            Text(
-              "Create Account",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildCard({required String label, required IconData icon, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF2563EB), size: 20),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E293B))),
+            ],
+          ),
+          const SizedBox(height: 15),
+          child,
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({String? hint}) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.grey[50],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[100]!)),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return ElevatedButton(
+      onPressed: _createAccount,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2D7CFF),
+        minimumSize: const Size(double.infinity, 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 5,
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_task, color: Colors.white),
+          SizedBox(width: 12),
+          Text("Create Account", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

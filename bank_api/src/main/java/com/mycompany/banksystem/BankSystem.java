@@ -39,7 +39,7 @@ public class BankSystem {
 
         // ✅ FIX 2: Added "/api" to the URI to match your Flutter request
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(
-            URI.create("http://0.0.0.0:8080/api/"), config
+            URI.create("http://127.0.0.1:8080/api/"), config
         );
 
         System.out.println("Backend running at http://localhost:8080/api/banks");

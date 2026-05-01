@@ -7,6 +7,7 @@ package com.mycompany.banksystem;
 import java.io.Serializable;
 import java.util.*;
 import javax.persistence.Basic;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -48,7 +49,7 @@ public class Customer implements Serializable {
     private String fname;
     @Column(name = "Lname")
     private String lname;
-    @Column(name = "Created_at")
+    @Column(name = "Created_at", updatable = false)
     private String createdat;
     @Column(name = "Email")
     private String email;
@@ -58,8 +59,8 @@ public class Customer implements Serializable {
     private String status;
     @Column(name = "National_ID")
     private String nationalID;
-    @OneToMany(mappedBy = "customerID")
-    private Collection<Account> accountCollection;
+   @OneToMany(mappedBy = "customerID", cascade = CascadeType.ALL)
+   private List<Account> accountCollection = new ArrayList<>();
 
     public Customer() {
     }
@@ -72,8 +73,16 @@ public class Customer implements Serializable {
         this.phone = phone;
         this.status = status;
         this.nationalID = nationalID;
-        this.accountCollection = accountCollection;
-    }
+                if (this.accountCollection == null) {
+              this.accountCollection = new ArrayList<>();
+          } else {
+              this.accountCollection.clear();
+          }
+
+          if (accountCollection != null) {
+              this.accountCollection.addAll(accountCollection);
+          }
+              }
     
 public void addAccount(Account account) {
     if (accountCollection == null)
@@ -156,7 +165,15 @@ public void addAccount(Account account) {
     }
 
     public void setAccountCollection(Collection<Account> accountCollection) {
-        this.accountCollection = accountCollection;
+       if (this.accountCollection == null) {
+    this.accountCollection = new ArrayList<>();
+} else {
+    this.accountCollection.clear();
+}
+
+if (accountCollection != null) {
+    this.accountCollection.addAll(accountCollection);
+}
     }
 
     @Override
