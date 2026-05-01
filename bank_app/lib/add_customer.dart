@@ -75,7 +75,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
       // استبدلي الجزء ده في كود الـ _saveCustomer
 final response = await http.post(
-      Uri.parse('http://localhost:8080/api/banks/customer'),
+      Uri.parse('http://127.0.0.1:8080/api/customer'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -88,18 +88,9 @@ final response = await http.post(
       if (mounted) Navigator.pop(context, true);
     }
   } catch (e) {
-    // هنا بقى التعديل المهم
-    if (e.toString().contains("Failed to fetch") || e.toString().contains("ClientException")) {
-      // ده معناه إن المتصفح قفل السكة بس السيرفر اشتغل (لأننا شايفين اللوج في الجافا)
-      _showSnackBar("✅ Customer added successfully!", Colors.green);
-      if (mounted) Navigator.pop(context, true);
-    } else {
-      print("Actual Error: $e");
-      _showSnackBar("Error: Connection lost, but check your database!", Colors.orange);
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
+  print("Actual Error: $e");
+  _showSnackBar("❌ Failed to add customer", Colors.red);
+}
 }
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(

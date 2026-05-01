@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'customer.dart';  // ✅ استيراد الـ Customer من نفس الملف
 
 class EditCustomerScreen extends StatefulWidget {
-  final Map customer; // بنمرر العميل بالكامل هنا
+  final Customer customer;
 
   const EditCustomerScreen({super.key, required this.customer});
 
@@ -17,17 +18,17 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _nationalIDController;
-  bool _isLoading = false;
+  
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    // ملء البيانات القديمة في الـ Controllers
-    _fnameController = TextEditingController(text: widget.customer['fname']);
-    _lnameController = TextEditingController(text: widget.customer['lname']);
-    _emailController = TextEditingController(text: widget.customer['email']);
-    _phoneController = TextEditingController(text: widget.customer['phone']);
-    _nationalIDController = TextEditingController(text: widget.customer['nationalID']);
+    _fnameController = TextEditingController(text: widget.customer.firstName);
+    _lnameController = TextEditingController(text: widget.customer.lastName);
+    _emailController = TextEditingController(text: widget.customer.email);
+    _phoneController = TextEditingController(text: widget.customer.phone);
+    _nationalIDController = TextEditingController(text: widget.customer.nationalID);
   }
 
   @override
@@ -40,58 +41,54 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     super.dispose();
   }
 
-  Future<void> _updateCustomer() async {
-    // التحقق من الحقول (نفس منطق الـ Add)
+ Future<void> _updateCustomer() async {
     if (_fnameController.text.trim().isEmpty || _lnameController.text.trim().isEmpty) {
       _showSnackBar("Please fill all names", Colors.orange);
       return;
     }
-    if (!_emailController.text.contains('@')) {
-      _showSnackBar("Please enter valid email", Colors.orange);
-      return;
-    }
-    if (_nationalIDController.text.length != 14) {
-      _showSnackBar("National ID must be 14 digits", Colors.orange);
-      return;
-    }
-
-    setState(() => _isLoading = true);
+    
+    setState(() => _isSaving = true);
 
     try {
       Map<String, dynamic> updatedData = {
-        "id": widget.customer['id'], // مهم جداً عشان السيرفر يعرف مين العميل
+        "customerID": widget.customer.id,
         "fname": _fnameController.text.trim(),
         "lname": _lnameController.text.trim(),
         "email": _emailController.text.trim(),
         "phone": _phoneController.text.trim(),
         "nationalID": _nationalIDController.text.trim(),
-        "status": widget.customer['status'] ?? "verified"
+        "status": widget.customer.status ?? "ACTIVE",
       };
 
-      final response = await http.put(
-        Uri.parse('http://localhost:8080/api/banks/customer/${widget.customer['id']}'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode(updatedData),
-      ).timeout(const Duration(seconds: 5));
+      // الرابط الجديد تماماً
+     final String url =
+    "http://127.0.0.1:8080/api/customers/${widget.customer.id}";
 
-      if (response.statusCode == 200) {
-        _showSnackBar("✅ Customer updated successfully!", Colors.green);
-        if (mounted) Navigator.pop(context, true);
-      }
-    } catch (e) {
-      // التعامل مع الـ CORS bug اللي بيحصل في الـ Web
-      if (e.toString().contains("Failed to fetch") || e.toString().contains("ClientException")) {
-        _showSnackBar("✅ Changes saved successfully!", Colors.green);
+print("📤 Sending PUT to: $url");
+
+final response = await http.put(
+  Uri.parse(url),
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  body: jsonEncode(updatedData),
+).timeout(const Duration(seconds: 15));
+
+print("📥 Status Code: ${response.statusCode}");
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        _showSnackBar("✅ Success!", Colors.green);
         if (mounted) Navigator.pop(context, true);
       } else {
-        _showSnackBar("Error connecting to server", Colors.red);
+        _showSnackBar("Failed: ${response.statusCode}", Colors.red);
       }
+    } catch (e) {
+      _showSnackBar("Connection Error: $e", Colors.red);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
-
-  void _showSnackBar(String message, Color color) {
+ void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: color),
     );
@@ -105,12 +102,11 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // HEADER (Orange for Edit)
-              Container(
+             Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFF6B00), // لون برتقالي لتمييز التعديل
+                  color: Color(0xFFFF6B00),
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(35),
                     bottomRight: Radius.circular(35),
@@ -152,9 +148,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                     ),
                   ],
                 ),
-              ),
-
-              // FORM
+             ),
               Transform.translate(
                 offset: const Offset(0, -25),
                 child: Padding(
@@ -170,10 +164,9 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                       _buildInputField(label: "Phone Number", icon: Icons.phone_outlined, controller: _phoneController, keyboardType: TextInputType.phone),
                       const SizedBox(height: 15),
                       _buildInputField(label: "National ID", icon: Icons.badge_outlined, controller: _nationalIDController, keyboardType: TextInputType.number),
-                      const SizedBox(height: 30),
-
+                     const SizedBox(height: 30),
                       GestureDetector(
-                        onTap: _isLoading ? null : _updateCustomer,
+                        onTap: _isSaving ? null : _updateCustomer,
                         child: Container(
                           width: double.infinity,
                           height: 60,
@@ -183,7 +176,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))],
                           ),
                           child: Center(
-                            child: _isLoading 
+                            child: _isSaving 
                               ? const CircularProgressIndicator(color: Colors.white)
                               : const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -196,6 +189,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

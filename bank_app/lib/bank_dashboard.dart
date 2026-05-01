@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'add_account.dart'; 
 import 'edit_customer.dart'; 
-import 'add_customer.dart';  
+import 'add_customer.dart';
+import 'customer.dart';
 
 class Bank2DashboardScreen extends StatefulWidget {
   const Bank2DashboardScreen({super.key});
@@ -11,15 +14,72 @@ class Bank2DashboardScreen extends StatefulWidget {
 }
 
 class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
-  // بنفترض إن الـ ID بتاع البنك ده هو 1 (لأن الصفحة ثابتة للبنك الأهلي)
-  final int currentBankId = 1; 
+ final int currentBankId = 1; 
+  List<Customer> _customers = [];
+  bool _isLoading = true;
 
-  // الميثود المسؤولة عن تحديث البيانات
-  void _refreshData() {
-    setState(() {
-      // هنا مستقبلاً هتنادي الـ API اللي بيجيب البيانات من الـ Backend
-      print("Data Refreshed for Bank ID: $currentBankId");
-    });
+  @override
+  void initState() {
+    super.initState();
+    _fetchCustomers();
+  }
+
+  Future<void> _deleteCustomer(int id) async {
+    try {
+      final url = Uri.parse("http://10.0.2.2:8080/api/customers/$id");
+
+      print("DELETE URL: $url");
+
+      final response = await http.delete(url);
+
+      print("Status: ${response.statusCode}");
+      print("Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Deleted successfully")),
+        );
+        _fetchCustomers();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Delete failed: ${response.statusCode}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print("DELETE ERROR: $e");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _fetchCustomers() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse("http://10.0.2.2:8080/api/customers/all")
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _customers = data.map((c) => Customer.fromJson(c)).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint("Connection Error: $e");
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -29,133 +89,35 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ================= HEADER =================
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(35),
-                  bottomRight: Radius.circular(35),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.arrow_back, color: Colors.white),
-                        SizedBox(width: 10),
-                        Text("Back", style: TextStyle(color: Colors.white, fontSize: 18)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 35),
-                      ),
-                      const SizedBox(width: 15),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("National Bank of Egypt", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                          Text("NBEGEHCX", style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        ],
-                      )
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ================= MAIN CONTENT =================
+            _buildHeader(),
             Expanded(
-              child: Transform.translate(
-                offset: const Offset(0, -25),
+              child: RefreshIndicator(
+                onRefresh: _fetchCustomers,
                 child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          _topActionButton(
-                            label: "Add\nCustomer",
-                            icon: Icons.person_add_alt_1_outlined,
-                            color: const Color(0xFF10B981),
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
-                              );
-                              _refreshData();
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          _topActionButton(
-                            label: "Add Account",
-                            icon: Icons.credit_card,
-                            color: const Color(0xFF3B82F6),
-                            onTap: () async {
-                              // بنستنى (await) الرجوع من الصفحة عشان نعمل ريفريش
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AddAccountScreen(bankId: currentBankId), 
-                                ),
-                              );
-                              _refreshData(); // التحديث بيحصل هنا أول ما الـ pop يتم
-                            },
-                          ),
-                        ],
-                      ),
+                      _buildActionButtons(),
                       const SizedBox(height: 25),
-                      Row(
-                        children: [
-                          const Icon(Icons.people_outline, color: Color(0xFF3B82F6)),
-                          const SizedBox(width: 8),
-                          const Text("Customers", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: Color(0xFF1E293B), shape: BoxShape.circle),
-                            child: const Text("5", style: TextStyle(color: Color(0xFF3B82F6))),
-                          )
-                        ],
-                      ),
+                      _buildSectionHeader(),
                       const SizedBox(height: 15),
-                      const CustomerCard(name: "Ahmed Mohamed", phone: "+20 100 123 4567", accounts: 2, balance: "125,000"),
-                      const CustomerCard(name: "Sara Ali", phone: "+20 101 234 5678", accounts: 1, balance: "450,000"),
-                      const CustomerCard(name: "Mohamed Hassan", phone: "+20 102 345 6789", accounts: 3, balance: "89,000"),
-                      const CustomerCard(name: "Fatma Ibrahim", phone: "+20 111 456 7890", accounts: 1, balance: "320,000"),
-                      const CustomerCard(name: "Youssef Ali", phone: "+20 122 789 1234", accounts: 2, balance: "210,000"),
+                      
+                      _isLoading 
+                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        : _customers.isEmpty 
+                          ? const Center(child: Text("No customers found", style: TextStyle(color: Colors.white)))
+                          : Column(
+                              children: _customers.map((c) => CustomerCard(
+                                customer: c,
+                                onRefresh: _fetchCustomers,
+                                onDelete: _deleteCustomer,
+                              )).toList(),
+                            ),
+
                       const SizedBox(height: 25),
-                      const Row(
-                        children: [
-                          Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6)),
-                          SizedBox(width: 8),
-                          const Text("Analytics & Reports", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-                      _analyticsButton("Show VIP Customers", const Color(0xFFF59E0B), const Color(0xFFEA580C), Icons.trending_up),
-                      const SizedBox(height: 12),
-                      _analyticsButton("Total Balance", const Color(0xFF10B981), const Color(0xFF059669), Icons.attach_money),
-                      const SizedBox(height: 30),
+                      _buildAnalyticsSection(),
                     ],
                   ),
                 ),
@@ -167,24 +129,119 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(35),
+          bottomRight: Radius.circular(35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.account_balance_rounded, color: Colors.white, size: 35),
+              const SizedBox(width: 15),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("National Bank of Egypt", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text("NBEGEHCX", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                ],
+              )
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        _topActionButton(
+          label: "Add\nCustomer",
+          icon: Icons.person_add_alt_1_outlined,
+          color: const Color(0xFF10B981),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddCustomerScreen()));
+            _fetchCustomers();
+          },
+        ),
+        const SizedBox(width: 12),
+        _topActionButton(
+          label: "Add Account",
+          icon: Icons.credit_card,
+          color: const Color(0xFF3B82F6),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (context) => AddAccountScreen(bankId: currentBankId)));
+            _fetchCustomers();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader() {
+    return Row(
+      children: [
+        const Icon(Icons.people_outline, color: Color(0xFF3B82F6)),
+        const SizedBox(width: 8),
+        const Text("Customers", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(color: Color(0xFF1E293B), shape: BoxShape.circle),
+          child: Text("${_customers.length}", style: const TextStyle(color: Color(0xFF3B82F6))),
+        )
+      ],
+    );
+  }
+
+  Widget _buildAnalyticsSection() {
+    return Column(
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6)),
+            SizedBox(width: 8),
+            Text("Analytics & Reports", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 15),
+        _analyticsButton("Show VIP Customers", const Color(0xFFF59E0B), const Color(0xFFEA580C), Icons.trending_up),
+        const SizedBox(height: 12),
+        _analyticsButton("Total Balance", const Color(0xFF10B981), const Color(0xFF059669), Icons.attach_money),
+      ],
+    );
+  }
+
   Widget _topActionButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
     return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            height: 100,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white, size: 30),
-                const SizedBox(height: 8),
-                Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ],
-            ),
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 100,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 30),
+              const SizedBox(height: 8),
+              Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
           ),
         ),
       ),
@@ -198,11 +255,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
       decoration: BoxDecoration(gradient: LinearGradient(colors: [c1, c2]), borderRadius: BorderRadius.circular(15)),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: Colors.white),
-          ),
+          Icon(icon, color: Colors.white),
           const SizedBox(width: 15),
           Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
@@ -211,27 +264,51 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
   }
 }
 
+// ✅ CustomerCard with delete callback
 class CustomerCard extends StatelessWidget {
-  final String name;
-  final String phone;
-  final int accounts;
-  final String balance;
+  final Customer customer;
+  final VoidCallback onRefresh;
+  final Future<void> Function(int id) onDelete;
 
-  const CustomerCard({super.key, required this.name, required this.phone, required this.accounts, required this.balance});
+  const CustomerCard({
+    super.key, 
+    required this.customer, 
+    required this.onRefresh,
+    required this.onDelete,
+  });
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Customer'),
+          content: Text(
+            'Are you sure you want to delete ${customer.firstName} ${customer.lastName}?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await onDelete(customer.id);
+                onRefresh();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> customerMap = {
-      "id": "1",
-      "fname": name.split(" ")[0],
-      "lname": name.contains(" ") ? name.split(" ")[1] : "Customer",
-      "email": "${name.replaceAll(" ", "").toLowerCase()}@nbe.com.eg",
-      "phone": phone,
-      "nationalID": "29901011234567",
-      "status": "verified"
-    };
-
-    return Container(
+    print("BUILD CARD: ${customer.firstName}");
+   return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
@@ -243,27 +320,32 @@ class CustomerCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(phone, style: TextStyle(color: Colors.grey[600])),
+                  Text("${customer.firstName} ${customer.lastName}", 
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(customer.phone, style: TextStyle(color: Colors.grey[600])),
                 ],
               ),
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
+                  IconButton(
+                    icon: Icon(Icons.edit_note, color: Colors.blue[700], size: 28),
+                    onPressed: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EditCustomerScreen(
-                            customer: customerMap,
-                          ),
+                          builder: (context) => EditCustomerScreen(customer: customer),
                         ),
                       );
+                      onRefresh();
                     },
-                    child: Icon(Icons.edit_note, color: Colors.blue[700], size: 28),
                   ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.delete_outline, color: Colors.red),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () {
+                      print("DELETE CLICKED");
+                      _showDeleteConfirmationDialog(context);
+                    },
+                  ),
                 ],
               )
             ],
@@ -271,9 +353,7 @@ class CustomerCard extends StatelessWidget {
           const SizedBox(height: 15),
           Row(
             children: [
-              _infoBox("Accounts", accounts.toString(), const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
-              const SizedBox(width: 10),
-              _infoBox("Balance", balance, const Color(0xFFF0FDF4), const Color(0xFF16A34A)),
+              _infoBox("Email", customer.email, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
             ],
           )
         ],
@@ -284,13 +364,15 @@ class CustomerCard extends StatelessWidget {
   Widget _infoBox(String label, String value, Color bg, Color textCol) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
         child: Column(
           children: [
             Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(value, style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(value, 
+                overflow: TextOverflow.ellipsis, 
+                style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

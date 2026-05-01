@@ -5,9 +5,10 @@ import 'add_bank.dart';
 import 'add_account.dart';
 import 'edit_customer.dart';
 import 'add_customer.dart';
+import 'customer.dart';  // ✅ استيراد الـ Customer من customer.dart
 
 // ─────────────────────────────────────────
-// MODEL
+// MODEL (BankModel بس)
 // ─────────────────────────────────────────
 
 class BankModel {
@@ -67,23 +68,21 @@ class BankRepository {
 // ─────────────────────────────────────────
 
 class BankDashboardScreen extends StatefulWidget {
-  
-  const BankDashboardScreen({super.key});
+const BankDashboardScreen({super.key});
 
   @override
   State<BankDashboardScreen> createState() => _BankDashboardScreenState();
 }
 
 class _BankDashboardScreenState extends State<BankDashboardScreen> {
-
-  final _repo = BankRepository();
+ final _repo = BankRepository();
   final _scrollController = ScrollController();
 
   final List<BankModel> _banks = [];
   int _currentPage = 0;
   bool _isLoading = false;
   bool _hasMore = true;
-  String _filter = 'All'; // 'All' | 'Active' | 'Inactive'
+  String _filter = 'All';
 
   int get _activeBanks => _banks.where((b) => b.isActive).length;
   int get _inactiveBanks => _banks.where((b) => !b.isActive).length;
@@ -166,8 +165,7 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
                 ),
               ),
 
-              SliverToBoxAdapter(child: _buildFilterRow()),
-
+             SliverToBoxAdapter(child: _buildFilterRow()),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
@@ -283,8 +281,7 @@ class _BankDashboardScreenState extends State<BankDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style:
-                  const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
@@ -506,7 +503,7 @@ class _BankCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────
-// BANK DETAILS SCREEN
+// BANK DETAILS SCREEN (WITH REPORTS)
 // ─────────────────────────────────────────
 
 class BankDetailsScreen extends StatefulWidget {
@@ -526,16 +523,7 @@ class BankDetailsScreen extends StatefulWidget {
 }
 
 class _BankDetailsScreenState extends State<BankDetailsScreen> {
-    final int currentBankId = 1; 
-
-  // الميثود المسؤولة عن تحديث البيانات
-  void _refreshData() {
-    setState(() {
-      // هنا مستقبلاً هتنادي الـ API اللي بيجيب البيانات من الـ Backend
-      print("Data Refreshed for Bank ID: $currentBankId");
-    });
-    }
-  List<Map<String, dynamic>> _customers = [];
+  List<Customer> _customers = [];
   bool _isLoadingCustomers = true;
 
   @override
@@ -544,28 +532,75 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     _loadCustomersForBank();
   }
 
+  // ✅ API call for Total Balance
+  Future<List<Map<String, dynamic>>> fetchTotalBalance() async {
+    final url = Uri.parse("http://localhost:8080/api/reports/total-balance");
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("Failed to load report");
+    }
+  }
+
+  // ✅ API call for VIP Customers
+  Future<List<Map<String, dynamic>>> fetchVIP(double minBalance) async {
+    final url = Uri.parse(
+        "http://localhost:8080/api/reports/vip?minBalance=$minBalance");
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("Failed VIP");
+    }
+  }
+
+  // ✅ API call for Bank Ranking
+  Future<List<Map<String, dynamic>>> fetchBankRanking() async {
+    final url = Uri.parse("http://localhost:8080/api/reports/bank-ranking");
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("Failed to load bank ranking");
+    }
+  }
+
+  // ✅ API call for Recent Cards Activity
+  Future<List<Map<String, dynamic>>> fetchRecentCards() async {
+    final url = Uri.parse("http://localhost:8080/api/reports/recent-cards");
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception("Failed to load recent cards");
+    }
+  }
+
   Future<void> _loadCustomersForBank() async {
     setState(() => _isLoadingCustomers = true);
 
     try {
       final response = await http.get(
-        Uri.parse(
-            'http://localhost:8080/api/customers?bankId=${widget.bankId}'),
+        Uri.parse('http://localhost:8080/api/customers?bankId=${widget.bankId}'),
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _customers = data
-              .map((json) => {
-                    'id': json['customerID'].toString(),
-                    'name':
-                        '${json['fname'] ?? ''} ${json['lname'] ?? ''}'.trim(),
-                    'phone': json['phone'] ?? '',
-                    'accounts': json['accountsCount'] ?? 0,
-                    'balance': json['totalBalance']?.toString() ?? '0',
-                  })
-              .toList();
+          _customers = data.map((json) => Customer.fromJson(json)).toList();
           _isLoadingCustomers = false;
         });
       } else {
@@ -687,14 +722,13 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                             icon: Icons.credit_card,
                             color: const Color(0xFF3B82F6),
                             onTap: () async {
-                              // بنستنى (await) الرجوع من الصفحة عشان نعمل ريفريش
-                              await Navigator.push(
+                            await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => AddAccountScreen(bankId: currentBankId), 
+                                  builder: (context) => AddAccountScreen(bankId: int.parse(widget.bankId)),
                                 ),
                               );
-                              _refreshData(); // التحديث بيحصل هنا أول ما الـ pop يتم
+                              _loadCustomersForBank();
                             },
                           ),
                         ],
@@ -737,10 +771,8 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                       else
                         ..._customers
                             .map((customer) => CustomerCard(
-                                  name: customer['name'],
-                                  phone: customer['phone'],
-                                  accounts: customer['accounts'],
-                                  balance: customer['balance'],
+                                  customer: customer,
+                                  onRefresh: _loadCustomersForBank,
                                 ))
                             .toList(),
                       const SizedBox(height: 25),
@@ -757,11 +789,353 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 15),
-                      _analyticsButton("Show VIP Customers",
-                          const Color(0xFFF59E0B), const Color(0xFFEA580C), Icons.trending_up),
+                      _analyticsButton(
+                        "Show VIP Customers",
+                        const Color(0xFFF59E0B),
+                        const Color(0xFFEA580C),
+                        Icons.trending_up,
+                        onTap: () async {
+                          try {
+                            final data = await fetchVIP(5000);
+                            
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.emoji_events, color: Colors.amber),
+                                    SizedBox(width: 8),
+                                    Text("VIP Customers", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: SizedBox(
+                                  height: 400,
+                                  width: 350,
+                                  child: data.isEmpty 
+                                    ? const Center(child: Text("No VIP customers found"))
+                                    : ListView.builder(
+                                        itemCount: data.length,
+                                        itemBuilder: (context, i) {
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(vertical: 4),
+                                            child: ListTile(
+                                              leading: CircleAvatar(
+                                                backgroundColor: Colors.amber.shade100,
+                                                child: const Icon(Icons.person, color: Colors.amber),
+                                              ),
+                                              title: Text(
+                                                "${data[i]["firstName"]} ${data[i]["lastName"]}",
+                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                              subtitle: Text(data[i]["type"] ?? "VIP Customer"),
+                                              trailing: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.shade100,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  "\$${data[i]["balance"]}",
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Close"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                      ),
                       const SizedBox(height: 12),
-                      _analyticsButton("Total Balance",
-                          const Color(0xFF10B981), const Color(0xFF059669), Icons.attach_money),
+                      _analyticsButton(
+                        "Total Balance",
+                        const Color(0xFF10B981),
+                        const Color(0xFF059669),
+                        Icons.attach_money,
+                        onTap: () async {
+                          try {
+                            final data = await fetchTotalBalance();
+                            
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) {
+                                return Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(25),
+                                      topRight: Radius.circular(25),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        margin: const EdgeInsets.all(16),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.account_balance, color: Colors.green),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              "Total Balance by Bank",
+                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Flexible(
+                                        child: ListView.builder(
+                                          shrinkWrap: true,
+                                          itemCount: data.length,
+                                          itemBuilder: (context, index) {
+                                            return ListTile(
+                                              leading: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade100,
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                child: const Icon(Icons.business, color: Colors.blue),
+                                              ),
+                                              title: Text(
+                                                data[index]["bankName"],
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                              ),
+                                              trailing: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.shade100,
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                child: Text(
+                                                  "\$${data[index]["totalBalance"]}",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+_analyticsButton(
+  "Bank Ranking",
+  const Color(0xFF8B5CF6),
+  const Color(0xFF7C3AED),
+  Icons.emoji_events,
+  onTap: () async {
+    try {
+      final data = await fetchBankRanking();
+      
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.emoji_events, color: Color(0xFF8B5CF6)),
+              SizedBox(width: 8),
+              Text("Bank Performance Ranking", style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            height: 400,
+            width: 350,
+            child: data.isEmpty 
+              ? const Center(child: Text("No bank ranking data available"))
+              : ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (context, i) {
+                    Color rankColor;
+                    if (i == 0) {
+                      rankColor = Colors.amber;
+                    } else if (i == 1) {
+                      rankColor = Colors.grey.shade400;
+                    } else if (i == 2) {
+                      rankColor = Colors.brown.shade300;
+                    } else {
+                      rankColor = const Color(0xFF8B5CF6).withOpacity(0.1);
+                    }
+                    
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: i == 0 
+                            ? const LinearGradient(
+                                colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: rankColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "${data[i]["rank"]}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: i <= 2 ? Colors.white : const Color(0xFF8B5CF6),
+                                ),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            data[i]["bankName"],
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          subtitle: Text("Accounts: ${data[i]["accounts"]}"),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              "\$${data[i]["totalBalance"]}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
+  },
+),
+                      const SizedBox(height: 12),
+                      _analyticsButton(
+                        "Recent Cards Activity",
+                        const Color(0xFF3B82F6),
+                        const Color(0xFF2563EB),
+                        Icons.credit_card,
+                        onTap: () async {
+                          try {
+                            final data = await fetchRecentCards();
+                            
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.credit_card, color: Color(0xFF3B82F6)),
+                                    SizedBox(width: 8),
+                                    Text("Recent Cards (Last 30 Days)", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: SizedBox(
+                                  height: 400,
+                                  width: 350,
+                                  child: data.isEmpty 
+                                    ? const Center(child: Text("No recent card activity"))
+                                    : ListView.builder(
+                                        itemCount: data.length,
+                                        itemBuilder: (context, i) {
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(vertical: 4),
+                                            child: ListTile(
+                                              leading: Container(
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                child: const Icon(Icons.credit_card, color: Color(0xFF3B82F6)),
+                                              ),
+                                              title: Text(
+                                                "${data[i]["firstName"]} ${data[i]["lastName"]}",
+                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                              subtitle: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text("Card Type: ${data[i]["cardType"]}"),
+                                                  Text("Status: ${data[i]["status"]}"),
+                                                  Text("Issued: ${data[i]["createdAt"]}"),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Close"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                      ),
                       const SizedBox(height: 30),
                     ],
                   ),
@@ -774,11 +1148,12 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
     );
   }
 
-  Widget _topActionButton(
-      {required String label,
-      required IconData icon,
-      required Color color,
-      required VoidCallback onTap}) {
+  Widget _topActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: Material(
         color: Colors.transparent,
@@ -807,29 +1182,32 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
   }
 
   Widget _analyticsButton(
-      String title, Color c1, Color c2, IconData icon) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [c1, c2]),
-          borderRadius: BorderRadius.circular(15)),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: Colors.white),
-          ),
-          const SizedBox(width: 15),
-          Text(title,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
-        ],
+      String title, Color c1, Color c2, IconData icon, {required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c1, c2]),
+            borderRadius: BorderRadius.circular(15)),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: Colors.white),
+            ),
+            const SizedBox(width: 15),
+            Text(title,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }
@@ -840,30 +1218,73 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
 // ─────────────────────────────────────────
 
 class CustomerCard extends StatelessWidget {
-  final String name;
-  final String phone;
-  final int accounts;
-  final String balance;
+  final Customer customer;
+  final VoidCallback onRefresh;
 
-  const CustomerCard(
-      {super.key,
-      required this.name,
-      required this.phone,
-      required this.accounts,
-      required this.balance});
+  const CustomerCard({
+    super.key,
+    required this.customer,
+    required this.onRefresh,
+  });
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Customer'),
+          content: Text(
+            'Are you sure you want to delete ${customer.firstName} ${customer.lastName}?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                try {
+                  final response = await http.delete(
+                    Uri.parse('http://localhost:8080/api/customers/${customer.id}'),
+                  );
+
+                  if (response.statusCode == 200 || response.statusCode == 204) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Customer deleted successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      onRefresh();
+                    }
+                  } else {
+                    throw Exception('Failed to delete');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error deleting customer: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-     final Map<String, dynamic> customerMap = {
-      "id": "1",
-      "fname": name.split(" ")[0],
-      "lname": name.contains(" ") ? name.split(" ")[1] : "Customer",
-      "email": "${name.replaceAll(" ", "").toLowerCase()}@nbe.com.eg",
-      "phone": phone,
-      "nationalID": "29901011234567",
-      "status": "verified"
-    };
-    return Container(
+   return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -876,10 +1297,11 @@ class CustomerCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
+                  Text("${customer.firstName} ${customer.lastName}",
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(phone, style: TextStyle(color: Colors.grey[600])),
+                  Text(customer.phone,
+                      style: TextStyle(color: Colors.grey[600])),
                 ],
               ),
               Row(
@@ -890,7 +1312,7 @@ class CustomerCard extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditCustomerScreen(
-                            customer: customerMap,
+                            customer: customer,
                           ),
                         ),
                       );
@@ -898,7 +1320,12 @@ class CustomerCard extends StatelessWidget {
                     child: Icon(Icons.edit_note, color: Colors.blue[700]),
                   ),
                   const SizedBox(width: 10),
-                  const Icon(Icons.delete_outline, color: Colors.red),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () {
+                      _showDeleteConfirmationDialog(context);
+                    },
+                  ),
                 ],
               )
             ],
@@ -906,11 +1333,11 @@ class CustomerCard extends StatelessWidget {
           const SizedBox(height: 15),
           Row(
             children: [
-              _infoBox("Accounts", accounts.toString(),
+              _infoBox("Email", customer.email,
                   const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
               const SizedBox(width: 10),
-              _infoBox("Balance", balance, const Color(0xFFF0FDF4),
-                  const Color(0xFF16A34A)),
+              _infoBox("Phone", customer.phone,
+                  const Color(0xFFF0FDF4), const Color(0xFF16A34A)),
             ],
           )
         ],
@@ -932,9 +1359,11 @@ class CustomerCard extends StatelessWidget {
                     const TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 4),
             Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     color: textCol,
-                    fontSize: 18,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold)),
           ],
         ),

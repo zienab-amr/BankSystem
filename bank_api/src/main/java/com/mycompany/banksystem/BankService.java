@@ -300,28 +300,30 @@ public class BankService {
         }
     }
 
-    public void deleteCustomer(int customerId) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Customer customer = em.find(Customer.class, customerId);
-            if (customer != null) {
-                em.remove(customer);
-                System.out.println("Customer deleted successfully from the database!");
-            } else {
-                System.out.println("Customer with ID " + customerId + " not found!");
-            }
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-            System.out.println("Error occurred while deleting the Customer.");
-        } finally {
-            em.close();
+  public void deleteCustomer(int customerId) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        em.getTransaction().begin();
+
+        Customer customer = em.find(Customer.class, customerId);
+
+        if (customer != null) {
+            em.remove(customer); // 👈 بس كده
+            System.out.println("Customer deleted successfully");
         }
+
+        em.getTransaction().commit();
+
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) {
+            em.getTransaction().rollback();
+        }
+        e.printStackTrace();
     }
+    finally {
+        em.close();
+    }
+}
     
     // ==========================================
     // COMPLEX QUERIES (JPQL - ODB Mapping)
@@ -342,36 +344,60 @@ public class BankService {
         }
     }
 
-    public void getTotalBalancePerBank() {
-        EntityManager em = emf.createEntityManager();
-        try {
-            String jpql = "SELECT b.bankname, SUM(a.balance) FROM Account a JOIN a.bankID b GROUP BY b.bankname";
-            List<Object[]> results = em.createQuery(jpql).getResultList();
-            
-            System.out.println("--- Total Balance Per Bank ---");
-            for (Object[] result : results) {
-                System.out.println("Bank: " + result[0] + " | Total Money: $" + result[1]);
-            }
-        } finally {
-            em.close();
-        }
-    }
+ public List<Map<String, Object>> getTotalBalancePerBank() {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql = "SELECT b.bankname, SUM(a.balance) " +
+                      "FROM Account a JOIN a.bankID b " +
+                      "GROUP BY b.bankname";
 
-    public void getVIPCustomers(BigDecimal minBalance) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            String jpql = "SELECT c.fname, c.lname, a.balance, a.accountType FROM Account a JOIN a.customerID c WHERE a.balance >= :balance";
-            List<Object[]> results = em.createQuery(jpql).setParameter("balance", minBalance).getResultList();
-            
-            System.out.println("--- VIP Customers (Balance >= " + minBalance + ") ---");
-            for (Object[] result : results) {
-                System.out.println("Name: " + result[0] + " " + result[1] + " | Balance: $" + result[2] + " | Type: " + result[3]);
-            }
-        } finally {
-            em.close();
-        }
-    }
+        List<Object[]> results = em.createQuery(jpql).getResultList();
 
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] r : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("bankName", r[0]);
+            map.put("totalBalance", r[1]);
+            response.add(map);
+        }
+
+        return response;
+
+    } finally {
+        em.close();
+    }
+}
+ 
+   public List<Map<String, Object>> getVIPCustomers(BigDecimal minBalance) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql = "SELECT c.fname, c.lname, a.balance, a.accountType " +
+                      "FROM Account a JOIN a.customerID c " +
+                      "WHERE a.balance >= :balance";
+
+        List<Object[]> results = em.createQuery(jpql)
+                .setParameter("balance", minBalance)
+                .getResultList();
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] r : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("firstName", r[0]);
+            map.put("lastName", r[1]);
+            map.put("balance", r[2]);
+            map.put("type", r[3]);
+            response.add(map);
+        }
+
+        return response;
+
+    } finally {
+        em.close();
+    }
+}
+   
     public void getHighRiskActiveBanks() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -417,72 +443,106 @@ public class BankService {
         }
     }
     
-    public void rankBanksByPerformance() {
-        EntityManager em = emf.createEntityManager();
-        try {
-            String jpql = "SELECT b.bankname, COUNT(a), SUM(a.balance) FROM Bank b LEFT JOIN b.accountCollection a GROUP BY b.bankname ORDER BY SUM(a.balance) DESC";
-            List<Object[]> results = em.createQuery(jpql).getResultList();
-            
-            System.out.println("--- Bank Performance Ranking ---");
-            int rank = 1;
-            for (Object[] row : results) {
-                System.out.println("#" + rank++ + " Bank: " + row[0] + " | Accounts: " + row[1] + " | Total Balance: " + row[2]);
-            }
-        } finally {
-            em.close();
+public List<Map<String, Object>> rankBanksByPerformance() {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql =
+            "SELECT b.bankname, COUNT(a), SUM(a.balance) " +
+            "FROM Bank b LEFT JOIN b.accountCollection a " +
+            "GROUP BY b.bankname " +
+            "ORDER BY SUM(a.balance) DESC";
+
+        List<Object[]> results = em.createQuery(jpql).getResultList();
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        int rank = 1;
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("rank", rank++);
+            map.put("bankName", row[0]);
+            map.put("accounts", row[1]);
+            map.put("totalBalance", row[2]);
+
+            response.add(map);
         }
+
+        return response;
+
+    } finally {
+        em.close();
     }
-    
-    public void getHighRiskCustomers() {
-        EntityManager em = emf.createEntityManager();
-        try {
-            String jpql = "SELECT c.fname, c.lname, COUNT(DISTINCT a.accountID), COUNT(DISTINCT cr.cardID), SUM(a.balance) " +
-                         "FROM Customer c LEFT JOIN c.accountCollection a LEFT JOIN a.cardCollection cr " +
-                         "GROUP BY c.customerID, c.fname, c.lname " +
-                         "HAVING COUNT(DISTINCT a.accountID) > 1 OR COUNT(DISTINCT cr.cardID) > 2 OR SUM(a.balance) < 1000";
-            List<Object[]> results = em.createQuery(jpql).getResultList();
-            
-            System.out.println("--- HIGH RISK CUSTOMERS ---");
-            for (Object[] row : results) {
-                System.out.println("Name: " + row[0] + " " + row[1] + " | Accounts: " + row[2] + " | Cards: " + row[3] + " | Total Balance: " + row[4]);
-            }
-        } finally {
-            em.close();
+}
+  public List<Map<String, Object>> getHighRiskCustomers() {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql =
+            "SELECT c.fname, c.lname, COUNT(DISTINCT a.accountID), " +
+            "COUNT(DISTINCT cr.cardID), SUM(a.balance) " +
+            "FROM Customer c " +
+            "LEFT JOIN c.accountCollection a " +
+            "LEFT JOIN a.cardCollection cr " +
+            "GROUP BY c.customerID, c.fname, c.lname " +
+            "HAVING COUNT(DISTINCT a.accountID) > 1 " +
+            "OR COUNT(DISTINCT cr.cardID) > 2 " +
+            "OR SUM(a.balance) < 1000";
+
+        List<Object[]> results = em.createQuery(jpql).getResultList();
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("firstName", row[0]);
+            map.put("lastName", row[1]);
+            map.put("accounts", row[2]);
+            map.put("cards", row[3]);
+            map.put("totalBalance", row[4]);
+
+            response.add(map);
         }
+        return response;
+
+    } finally {
+        em.close();
     }
+}
     
-    public void getRecentAccountsActivity() {
-        EntityManager em = emf.createEntityManager();
-        try {
-            Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
-            String jpql = "SELECT c.fname, c.lname, a.accountType, a.balance, a.openedat FROM Account a JOIN a.customerID c WHERE a.openedat >= :dateThreshold ORDER BY a.openedat DESC";
-            List<Object[]> results = em.createQuery(jpql).setParameter("dateThreshold", dateThreshold).getResultList();
-            
-            System.out.println("--- Recent Accounts (Last 30 Days) ---");
-            for (Object[] row : results) {
-                System.out.println("Customer: " + row[0] + " " + row[1] + " | Type: " + row[2] + " | Balance: " + row[3] + " | Opened At: " + row[4]);
-            }
-        } finally {
-            em.close();
+
+  public List<Map<String, Object>> getRecentCardsActivity() {
+    EntityManager em = emf.createEntityManager();
+    try {
+      
+        Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
+        String jpql = "SELECT c.fname, c.lname, cr.cardtype, cr.status, cr.createdAt " +
+                      "FROM Card cr JOIN cr.accountID a JOIN a.customerID c " +
+                      "WHERE cr.createdAt >= :dateThreshold " +
+                      "ORDER BY cr.createdAt DESC";
+
+        List<Object[]> results = em.createQuery(jpql)
+                .setParameter("dateThreshold", dateThreshold)
+                .getResultList();
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("firstName", row[0]);
+            map.put("lastName", row[1]);
+            map.put("cardType", row[2]);
+            map.put("status", row[3]);
+            map.put("createdAt", row[4]);
+
+            response.add(map);
         }
+
+        return response;
+
+    } finally {
+        em.close();
     }
-    
-    public void getRecentCardsActivity() {
-        EntityManager em = emf.createEntityManager();
-        try {
-            Date dateThreshold = new Date(System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000));
-            String jpql = "SELECT c.fname, c.lname, cr.cardtype, cr.status, cr.createdAt FROM Card cr JOIN cr.accountID a JOIN a.customerID c WHERE cr.createdAt >= :dateThreshold ORDER BY cr.createdAt DESC";
-            List<Object[]> results = em.createQuery(jpql).setParameter("dateThreshold", dateThreshold).getResultList();
-            
-            System.out.println("--- Recent Cards (Last 30 Days) ---");
-            for (Object[] row : results) {
-                System.out.println("Customer: " + row[0] + " " + row[1] + " | Card: " + row[2] + " | Status: " + row[3] + " | Created At: " + row[4]);
-            }
-        } finally {
-            em.close();
-        }
-    }
-    
+}
+  
     public Account getAnyAccount() {
         EntityManager em = emf.createEntityManager();
         try {
@@ -546,7 +606,15 @@ public class BankService {
             System.out.println("EntityManagerFactory closed successfully.");
         }
     }
-    
+    public List<Customer> getAllCustomers() {
+    EntityManager em = emf.createEntityManager();
+    try {
+        // تأكد أن "Customer.findAll" معرفة داخل كلاس الـ Entity الخاص بالـ Customer
+        return em.createNamedQuery("Customer.findAll", Customer.class).getResultList();
+    } finally {
+        em.close();
+    }
+}
     //fatma
     public List<Customer> getCustomersByBankId(int bankId) {
     EntityManager em = emf.createEntityManager();

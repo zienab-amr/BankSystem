@@ -7,6 +7,7 @@ package com.mycompany.banksystem;
 import java.io.Serializable;
 import java.util.*;
 import javax.persistence.Basic;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -48,7 +49,7 @@ public class Customer implements Serializable {
     private String fname;
     @Column(name = "Lname")
     private String lname;
-    @Column(name = "Created_at")
+    @Column(name = "Created_at", updatable = false)
     private String createdat;
     @Column(name = "Email")
     private String email;
@@ -58,7 +59,7 @@ public class Customer implements Serializable {
     private String status;
     @Column(name = "National_ID")
     private String nationalID;
-    @OneToMany(mappedBy = "customerID")
+    @OneToMany(mappedBy = "customerID", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private Collection<Account> accountCollection;
 
     public Customer() {

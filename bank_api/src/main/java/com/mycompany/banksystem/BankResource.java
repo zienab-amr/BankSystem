@@ -1,8 +1,13 @@
 package com.mycompany.banksystem;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.util.List;
+import java.util.Map;
+import javax.persistence.EntityManager;
 
 @Path("/") // Base path for all resources in this class
 @Produces(MediaType.APPLICATION_JSON)
@@ -69,6 +74,24 @@ public class BankResource {
             return Response.serverError().entity("Error fetching customers: " + e.getMessage()).build();
         }
     }
+    // ميثود جديدة لجلب كل العملاء بدون التقيد ببنك
+    @GET
+    @Path("/customers/all") 
+    public Response getAllCustomers() {
+        try {
+            System.out.println("🔥 API called: Fetching ALL customers from database");
+            List<Customer> allCustomers = service.getAllCustomers(); // تأكدي إن الميثود دي موجودة في الـ Service
+            return Response.ok(allCustomers)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError()
+                    .entity("Error fetching all customers: " + e.getMessage())
+                    .header("Access-Control-Allow-Origin", "*")
+                    .build();
+        }
+    }
 
   @POST
 @Path("/customer")
@@ -98,7 +121,7 @@ public Response addCustomer(Customer customer) {
 @Produces(MediaType.APPLICATION_JSON)
 public Response addAccount(Account account) {
     try {
-        // بنستخدم الخدمة عشان نسجل الحساب في الداتابيز
+        // بنستخدم الخدمة Sعشان نسجل الحساب في الداتابيز
         service.insertAccount(account); 
         
         return Response.status(Response.Status.CREATED)
@@ -111,6 +134,119 @@ public Response addAccount(Account account) {
         return Response.serverError()
                 .entity("Error adding account: " + e.getMessage())
                 .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
+
+   // 1. ميثود الـ OPTIONS الشاملة (ضعه قبل ميثود الـ PUT)
+    @OPTIONS
+    @Path("/update/{id}")
+    public Response handleOptions() {
+        return Response.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "PUT, POST, GET, DELETE, OPTIONS")
+                .header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
+                .build();
+    }
+
+    // 2. ميثود الـ PUT المعدلة بمسار أوضح
+ @PUT
+@Path("/customers/{id}")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response updateCustomerPUT(@PathParam("id") int id, Customer customer) {
+    try {
+        System.out.println("✅ PUT RECEIVED - ID: " + id);
+
+        customer.setCustomerID(id);
+        service.updateCustomer(customer);
+
+        return Response.ok(customer)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "PUT, GET, OPTIONS")
+                .header("Access-Control-Allow-Headers", "Content-Type, Accept")
+                .build();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return Response.serverError()
+                .entity("Error: " + e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
+@DELETE
+@Path("/customers/{id}")
+@Produces(MediaType.APPLICATION_JSON)
+public Response deleteCustomer(@PathParam("id") int id) {
+    try {
+        service.deleteCustomer(id);
+
+        return Response.ok()
+                .entity("Customer deleted successfully")
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return Response.serverError()
+                .entity("Error deleting customer: " + e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
+@GET
+@Path("/reports/total-balance")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getTotalBalancePerBank() {
+    try {
+        return Response.ok(service.getTotalBalancePerBank())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError().entity(e.getMessage()).build();
+    }
+}
+@GET
+@Path("/reports/vip")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getVIPCustomers(@QueryParam("minBalance") double minBalance) {
+    try {
+        return Response.ok(
+                service.getVIPCustomers(BigDecimal.valueOf(minBalance))
+        ).header("Access-Control-Allow-Origin", "*")
+         .build();
+
+    } catch (Exception e) {
+        return Response.serverError().entity(e.getMessage()).build();
+    }
+}
+
+@GET
+@Path("/reports/recent-cards")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getRecentCards() {
+    try {
+        return Response.ok(service.getRecentCardsActivity())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError()
+                .entity(e.getMessage())
+                .build();
+    }
+}
+@GET
+@Path("/reports/bank-ranking")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getBankRanking() {
+    try {
+        return Response.ok(service.rankBanksByPerformance())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError()
+                .entity(e.getMessage())
                 .build();
     }
 }
