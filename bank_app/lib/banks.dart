@@ -67,6 +67,7 @@ class BankRepository {
 // ─────────────────────────────────────────
 
 class BankDashboardScreen extends StatefulWidget {
+  
   const BankDashboardScreen({super.key});
 
   @override
@@ -74,6 +75,7 @@ class BankDashboardScreen extends StatefulWidget {
 }
 
 class _BankDashboardScreenState extends State<BankDashboardScreen> {
+
   final _repo = BankRepository();
   final _scrollController = ScrollController();
 
@@ -524,6 +526,15 @@ class BankDetailsScreen extends StatefulWidget {
 }
 
 class _BankDetailsScreenState extends State<BankDetailsScreen> {
+    final int currentBankId = 1; 
+
+  // الميثود المسؤولة عن تحديث البيانات
+  void _refreshData() {
+    setState(() {
+      // هنا مستقبلاً هتنادي الـ API اللي بيجيب البيانات من الـ Backend
+      print("Data Refreshed for Bank ID: $currentBankId");
+    });
+    }
   List<Map<String, dynamic>> _customers = [];
   bool _isLoadingCustomers = true;
 
@@ -675,13 +686,15 @@ class _BankDetailsScreenState extends State<BankDetailsScreen> {
                             label: "Add Account",
                             icon: Icons.credit_card,
                             color: const Color(0xFF3B82F6),
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              // بنستنى (await) الرجوع من الصفحة عشان نعمل ريفريش
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AddAccountScreen()),
+                                  builder: (context) => AddAccountScreen(bankId: currentBankId), 
+                                ),
                               );
+                              _refreshData(); // التحديث بيحصل هنا أول ما الـ pop يتم
                             },
                           ),
                         ],
@@ -841,6 +854,15 @@ class CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+     final Map<String, dynamic> customerMap = {
+      "id": "1",
+      "fname": name.split(" ")[0],
+      "lname": name.contains(" ") ? name.split(" ")[1] : "Customer",
+      "email": "${name.replaceAll(" ", "").toLowerCase()}@nbe.com.eg",
+      "phone": phone,
+      "nationalID": "29901011234567",
+      "status": "verified"
+    };
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
@@ -868,8 +890,7 @@ class CustomerCard extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditCustomerScreen(
-                            initialName: name,
-                            initialPhone: phone,
+                            customer: customerMap,
                           ),
                         ),
                       );
