@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config.dart'; // ✅ ADDED
 
 class AddBankScreen extends StatefulWidget {
   const AddBankScreen({super.key});
@@ -12,7 +13,7 @@ class AddBankScreen extends StatefulWidget {
 class _AddBankScreenState extends State<AddBankScreen> {
   final TextEditingController _bankNameController = TextEditingController();
   final TextEditingController _swiftCodeController = TextEditingController();
-  
+
   bool isActive = true;
   bool _isLoading = false;
 
@@ -37,7 +38,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/banks'),
+        Uri.parse('${AppConfig.baseUrl}/api/add'), // ✅ FIXED
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'bankname': _bankNameController.text.trim(),
@@ -74,7 +75,6 @@ class _AddBankScreenState extends State<AddBankScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // الجزء العلوي
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 30),
@@ -117,20 +117,16 @@ class _AddBankScreenState extends State<AddBankScreen> {
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // حقل اسم البنك
                   _buildInputCard(
                     title: "Bank Name",
                     icon: Icons.account_balance_outlined,
                     child: _buildTextField(_bankNameController, "Enter bank name"),
                   ),
                   const SizedBox(height: 15),
-
-                  // حقل SWIFT Code
                   _buildInputCard(
                     title: "SWIFT Code",
                     icon: Icons.code,
@@ -140,15 +136,13 @@ class _AddBankScreenState extends State<AddBankScreen> {
                         _buildTextField(_swiftCodeController, "XXXXXXXX"),
                         const Padding(
                           padding: EdgeInsets.only(top: 8, left: 5),
-                          child: Text("8 or 11 characters (e.g., NBEGEHCX)", 
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          child: Text("8 or 11 characters (e.g., NBEGEHCX)",
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 15),
-
-                  // حقل الدولة (ثابت مصر)
                   _buildInputCard(
                     title: "Country",
                     icon: Icons.public,
@@ -169,8 +163,6 @@ class _AddBankScreenState extends State<AddBankScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-
-                  // حقل الحالة
                   _buildInputCard(
                     title: "Status",
                     icon: Icons.check_circle_outline,
@@ -183,8 +175,6 @@ class _AddBankScreenState extends State<AddBankScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // زر الإضافة
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -216,10 +206,7 @@ class _AddBankScreenState extends State<AddBankScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
