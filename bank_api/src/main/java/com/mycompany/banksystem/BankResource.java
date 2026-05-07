@@ -9,14 +9,12 @@ import java.util.List;
 import java.util.Map;
 import javax.persistence.EntityManager;
 
-@Path("/") // Base path for all resources in this class
+@Path("/") 
 @Produces(MediaType.APPLICATION_JSON)
 public class BankResource {
 
     private final BankService service = new BankService();
 
-    // 1. ميثود الـ OPTIONS (حيوية جداً لعمل Flutter Web)
-    // بتسمح للمتصفح إنه "يستأذن" السيرفر قبل ما يبعت الـ POST الحقيقي
     @OPTIONS
     @Path("{path : .*}")
     public Response options() {
@@ -42,7 +40,6 @@ public class BankResource {
         }
     }
 
-    // 2. ميثود إضافة بنك (غيرنا الـ Path لـ /add عشان ميتخانقش مع الـ GET)
     @POST
     @Path("/add")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -67,14 +64,12 @@ public class BankResource {
             System.out.println("🔥 API called for Customers with bankId: " + bankId);
             List<Customer> customers = service.getCustomersByBankId(bankId);
             
-            // If the list is empty, we still return 200 OK with an empty array []
             return Response.ok(customers).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity("Error fetching customers: " + e.getMessage()).build();
         }
     }
-    // ميثود جديدة لجلب كل العملاء بدون التقيد ببنك
     @GET
     @Path("/customers/all") 
     public Response getAllCustomers() {
@@ -101,7 +96,6 @@ public Response addCustomer(Customer customer) {
     try {
         service.insertCustomer(customer); 
         
-        // الرد ده هو اللي هيخلي فلاتر يشوف الـ Success
         return Response.status(Response.Status.CREATED)
                 .entity(customer) 
                 .header("Access-Control-Allow-Origin", "*") // مهم جداً للـ Web
@@ -121,7 +115,6 @@ public Response addCustomer(Customer customer) {
 @Produces(MediaType.APPLICATION_JSON)
 public Response addAccount(Account account) {
     try {
-        // بنستخدم الخدمة Sعشان نسجل الحساب في الداتابيز
         service.insertAccount(account); 
         
         return Response.status(Response.Status.CREATED)
@@ -138,7 +131,6 @@ public Response addAccount(Account account) {
     }
 }
 
-   // 1. ميثود الـ OPTIONS الشاملة (ضعه قبل ميثود الـ PUT)
     @OPTIONS
     @Path("/update/{id}")
     public Response handleOptions() {
@@ -149,7 +141,6 @@ public Response addAccount(Account account) {
                 .build();
     }
 
-    // 2. ميثود الـ PUT المعدلة بمسار أوضح
  @PUT
 @Path("/customers/{id}")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -248,6 +239,116 @@ public Response getBankRanking() {
         return Response.serverError()
                 .entity(e.getMessage())
                 .build();
+    }
+}
+@OPTIONS
+@Path("/banks/{id}")
+public Response optionsBank() {
+    return Response.ok()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
+            .header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
+            .build();
+}
+
+@DELETE
+@Path("/banks/{id}")
+@Produces(MediaType.APPLICATION_JSON)
+public Response deleteBank(@PathParam("id") int id) {
+    try {
+        System.out.println("🗑️ DELETE RECEIVED - Bank ID: " + id);
+
+        EntityManager em = service.getEntityManager();
+        em.getTransaction().begin();
+        em.createNativeQuery("DELETE FROM card WHERE Account_ID IN (SELECT Account_ID FROM account WHERE Bank_ID = ?)")
+          .setParameter(1, id).executeUpdate();
+
+        em.createNativeQuery("DELETE FROM account WHERE Bank_ID = ?")
+          .setParameter(1, id).executeUpdate();
+
+        em.createNativeQuery("DELETE FROM bank WHERE Bank_ID = ?")
+          .setParameter(1, id).executeUpdate();
+
+        em.getTransaction().commit();
+        em.close();
+
+        System.out.println("✅ Bank deleted successfully!");
+
+        return Response.ok("Bank deleted successfully")
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return Response.serverError()
+                .entity("Error: " + e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
+@PUT
+@Path("/banks/{id}")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response updateBank(@PathParam("id") int id, Bank bank) {
+    try {
+        System.out.println(" PUT RECEIVED - Bank ID: " + id);
+        System.out.println(" New name: " + bank.getBankname());
+        System.out.println(" New swift: " + bank.getSwiftCode());
+        System.out.println(" New status: " + bank.getStatus());
+
+        EntityManager em = service.getEntityManager();
+        em.getTransaction().begin();
+
+        em.createNativeQuery(
+            "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?"
+        )
+        .setParameter(1, bank.getBankname())
+        .setParameter(2, bank.getSwiftCode())
+        .setParameter(3, bank.getStatus())
+        .setParameter(4, id)
+        .executeUpdate();
+
+        em.getTransaction().commit();
+        em.close();
+
+        System.out.println(" DB updated successfully!");
+
+        return Response.ok(bank)
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return Response.serverError()
+                .entity("Error: " + e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
+@GET
+@Path("/reports/high-risk")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getHighRiskCustomers() {
+    try {
+        return Response.ok(service.getHighRiskCustomers())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError().entity(e.getMessage()).build();
+    }
+}
+
+@GET
+@Path("/reports/risk-level")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getCustomersByRiskLevel() {
+    try {
+        return Response.ok(service.getCustomersByRiskLevel())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError().entity(e.getMessage()).build();
     }
 }
 }

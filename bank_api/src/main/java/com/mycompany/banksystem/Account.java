@@ -50,7 +50,6 @@ public class Account implements Serializable {
     private Integer accountID;
     @Column(name = "Account_Type")
     private String accountType;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Column(name = "Balance")
     private BigDecimal balance;
     @Column(name = "Currency")

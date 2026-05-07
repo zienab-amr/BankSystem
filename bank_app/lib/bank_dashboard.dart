@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'add_account.dart'; 
-import 'edit_customer.dart'; 
+import 'add_account.dart';
+import 'edit_customer.dart';
 import 'add_customer.dart';
 import 'customer.dart';
+import 'config.dart';
 
 class Bank2DashboardScreen extends StatefulWidget {
   const Bank2DashboardScreen({super.key});
@@ -14,7 +15,7 @@ class Bank2DashboardScreen extends StatefulWidget {
 }
 
 class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
- final int currentBankId = 1; 
+  final int currentBankId = 1;
   List<Customer> _customers = [];
   bool _isLoading = true;
 
@@ -26,7 +27,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
 
   Future<void> _deleteCustomer(int id) async {
     try {
-      final url = Uri.parse("http://10.0.2.2:8080/api/customers/$id");
+      final url = Uri.parse("${AppConfig.baseUrl}/api/customers/$id"); // ✅ FIXED
 
       print("DELETE URL: $url");
 
@@ -50,7 +51,6 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
       }
     } catch (e) {
       print("DELETE ERROR: $e");
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error: $e"),
@@ -64,7 +64,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.get(
-        Uri.parse("http://10.0.2.2:8080/api/customers/all")
+        Uri.parse("${AppConfig.baseUrl}/api/customers/all"), // ✅ FIXED
       );
 
       if (response.statusCode == 200) {
@@ -103,19 +103,19 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
                       const SizedBox(height: 25),
                       _buildSectionHeader(),
                       const SizedBox(height: 15),
-                      
-                      _isLoading 
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                        : _customers.isEmpty 
-                          ? const Center(child: Text("No customers found", style: TextStyle(color: Colors.white)))
-                          : Column(
-                              children: _customers.map((c) => CustomerCard(
-                                customer: c,
-                                onRefresh: _fetchCustomers,
-                                onDelete: _deleteCustomer,
-                              )).toList(),
-                            ),
-
+                      _isLoading
+                          ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                          : _customers.isEmpty
+                              ? const Center(child: Text("No customers found", style: TextStyle(color: Colors.white)))
+                              : Column(
+                                  children: _customers
+                                      .map((c) => CustomerCard(
+                                            customer: c,
+                                            onRefresh: _fetchCustomers,
+                                            onDelete: _deleteCustomer,
+                                          ))
+                                      .toList(),
+                                ),
                       const SizedBox(height: 25),
                       _buildAnalyticsSection(),
                     ],
@@ -134,9 +134,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-        ),
+        gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(35),
           bottomRight: Radius.circular(35),
@@ -150,17 +148,17 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(height: 10),
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.account_balance_rounded, color: Colors.white, size: 35),
-              const SizedBox(width: 15),
-              const Column(
+              Icon(Icons.account_balance_rounded, color: Colors.white, size: 35),
+              SizedBox(width: 15),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("National Bank of Egypt", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                   Text("NBEGEHCX", style: TextStyle(color: Colors.white70, fontSize: 14)),
                 ],
-              )
+              ),
             ],
           ),
         ],
@@ -205,7 +203,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
           padding: const EdgeInsets.all(8),
           decoration: const BoxDecoration(color: Color(0xFF1E293B), shape: BoxShape.circle),
           child: Text("${_customers.length}", style: const TextStyle(color: Color(0xFF3B82F6))),
-        )
+        ),
       ],
     );
   }
@@ -264,15 +262,14 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
   }
 }
 
-// ✅ CustomerCard with delete callback
 class CustomerCard extends StatelessWidget {
   final Customer customer;
   final VoidCallback onRefresh;
   final Future<void> Function(int id) onDelete;
 
   const CustomerCard({
-    super.key, 
-    required this.customer, 
+    super.key,
+    required this.customer,
     required this.onRefresh,
     required this.onDelete,
   });
@@ -283,10 +280,8 @@ class CustomerCard extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Delete Customer'),
-          content: Text(
-            'Are you sure you want to delete ${customer.firstName} ${customer.lastName}?',
-          ),
-          actions: <Widget>[
+          content: Text('Are you sure you want to delete ${customer.firstName} ${customer.lastName}?'),
+          actions: [
             TextButton(
               child: const Text('Cancel'),
               onPressed: () => Navigator.of(dialogContext).pop(),
@@ -307,8 +302,7 @@ class CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("BUILD CARD: ${customer.firstName}");
-   return Container(
+    return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
@@ -320,7 +314,7 @@ class CustomerCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("${customer.firstName} ${customer.lastName}", 
+                  Text("${customer.firstName} ${customer.lastName}",
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   Text(customer.phone, style: TextStyle(color: Colors.grey[600])),
                 ],
@@ -332,22 +326,17 @@ class CustomerCard extends StatelessWidget {
                     onPressed: () async {
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => EditCustomerScreen(customer: customer),
-                        ),
+                        MaterialPageRoute(builder: (context) => EditCustomerScreen(customer: customer)),
                       );
                       onRefresh();
                     },
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () {
-                      print("DELETE CLICKED");
-                      _showDeleteConfirmationDialog(context);
-                    },
+                    onPressed: () => _showDeleteConfirmationDialog(context),
                   ),
                 ],
-              )
+              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -355,7 +344,7 @@ class CustomerCard extends StatelessWidget {
             children: [
               _infoBox("Email", customer.email, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -370,8 +359,8 @@ class CustomerCard extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(value, 
-                overflow: TextOverflow.ellipsis, 
+            Text(value,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),

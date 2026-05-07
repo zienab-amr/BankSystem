@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'customer.dart';  // ✅ استيراد الـ Customer من نفس الملف
+import 'customer.dart';
+import 'config.dart'; // ✅ ADDED
 
 class EditCustomerScreen extends StatefulWidget {
   final Customer customer;
@@ -18,7 +19,7 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _nationalIDController;
-  
+
   bool _isSaving = false;
 
   @override
@@ -41,12 +42,12 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
     super.dispose();
   }
 
- Future<void> _updateCustomer() async {
+  Future<void> _updateCustomer() async {
     if (_fnameController.text.trim().isEmpty || _lnameController.text.trim().isEmpty) {
       _showSnackBar("Please fill all names", Colors.orange);
       return;
     }
-    
+
     setState(() => _isSaving = true);
 
     try {
@@ -60,22 +61,21 @@ class _EditCustomerScreenState extends State<EditCustomerScreen> {
         "status": widget.customer.status ?? "ACTIVE",
       };
 
-      // الرابط الجديد تماماً
-     final String url =
-    "http://127.0.0.1:8080/api/customers/${widget.customer.id}";
+      final String url = "${AppConfig.baseUrl}/api/customers/${widget.customer.id}"; // ✅ FIXED
 
-print("📤 Sending PUT to: $url");
+      print("📤 Sending PUT to: $url");
 
-final response = await http.put(
-  Uri.parse(url),
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  body: jsonEncode(updatedData),
-).timeout(const Duration(seconds: 15));
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(updatedData),
+      ).timeout(const Duration(seconds: 15));
 
-print("📥 Status Code: ${response.statusCode}");
+      print("📥 Status Code: ${response.statusCode}");
+
       if (response.statusCode == 200 || response.statusCode == 204) {
         _showSnackBar("✅ Success!", Colors.green);
         if (mounted) Navigator.pop(context, true);
@@ -88,7 +88,8 @@ print("📥 Status Code: ${response.statusCode}");
       if (mounted) setState(() => _isSaving = false);
     }
   }
- void _showSnackBar(String message, Color color) {
+
+  void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: color),
     );
@@ -102,7 +103,7 @@ print("📥 Status Code: ${response.statusCode}");
         child: SingleChildScrollView(
           child: Column(
             children: [
-             Container(
+              Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                 decoration: const BoxDecoration(
@@ -143,12 +144,12 @@ print("📥 Status Code: ${response.statusCode}");
                             Text("Edit Customer", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                             Text("Update information carefully", style: TextStyle(color: Colors.white70, fontSize: 14)),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ],
                 ),
-             ),
+              ),
               Transform.translate(
                 offset: const Offset(0, -25),
                 child: Padding(
@@ -164,7 +165,7 @@ print("📥 Status Code: ${response.statusCode}");
                       _buildInputField(label: "Phone Number", icon: Icons.phone_outlined, controller: _phoneController, keyboardType: TextInputType.phone),
                       const SizedBox(height: 15),
                       _buildInputField(label: "National ID", icon: Icons.badge_outlined, controller: _nationalIDController, keyboardType: TextInputType.number),
-                     const SizedBox(height: 30),
+                      const SizedBox(height: 30),
                       GestureDetector(
                         onTap: _isSaving ? null : _updateCustomer,
                         child: Container(
@@ -176,16 +177,16 @@ print("📥 Status Code: ${response.statusCode}");
                             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5))],
                           ),
                           child: Center(
-                            child: _isSaving 
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.check_circle_outline, color: Colors.white),
-                                    SizedBox(width: 10),
-                                    Text("Save Changes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                            child: _isSaving
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_circle_outline, color: Colors.white),
+                                      SizedBox(width: 10),
+                                      Text("Save Changes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
                           ),
                         ),
                       ),

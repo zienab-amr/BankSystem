@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config.dart';
 
 class AddCustomerScreen extends StatefulWidget {
   const AddCustomerScreen({super.key});
@@ -68,34 +69,37 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         "phone": _phoneController.text.trim(),
         "nationalID": _nationalIDController.text.trim(),
         "createdat": DateTime.now().toIso8601String(),
-        "status": "verified"
+        "status": "verified",
       };
-      
+
       print("Sending data: ${jsonEncode(customerData)}");
 
       // استبدلي الجزء ده في كود الـ _saveCustomer
-final response = await http.post(
-      Uri.parse('http://127.0.0.1:8080/api/customer'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(customerData),
-    ).timeout(const Duration(seconds: 5)); // قللنا الـ timeout شوية
+      final response = await http
+          .post(
+            Uri.parse("${AppConfig.baseUrl}/api/customer"),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(customerData),
+          )
+          .timeout(const Duration(seconds: 5)); // قللنا الـ timeout شوية
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      _showSnackBar("✅ Customer added successfully!", Colors.green);
-      if (mounted) Navigator.pop(context, true);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        _showSnackBar("✅ Customer added successfully!", Colors.green);
+        if (mounted) Navigator.pop(context, true);
+      }
+    } catch (e) {
+      print("Actual Error: $e");
+      _showSnackBar("❌ Failed to add customer", Colors.red);
     }
-  } catch (e) {
-  print("Actual Error: $e");
-  _showSnackBar("❌ Failed to add customer", Colors.red);
-}
-}
+  }
+
   void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
   @override
@@ -126,7 +130,10 @@ final response = await http.post(
                         children: [
                           Icon(Icons.arrow_back, color: Colors.white),
                           SizedBox(width: 10),
-                          Text("Back", style: TextStyle(color: Colors.white, fontSize: 18)),
+                          Text(
+                            "Back",
+                            style: TextStyle(color: Colors.white, fontSize: 18),
+                          ),
                         ],
                       ),
                     ),
@@ -139,16 +146,33 @@ final response = await http.post(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 35),
+                          child: const Icon(
+                            Icons.person_outline_rounded,
+                            color: Colors.white,
+                            size: 35,
+                          ),
                         ),
                         const SizedBox(width: 15),
                         const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Add New Customer", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                            Text("Enter customer details", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                            Text(
+                              "Add New Customer",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "Enter customer details",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ],
@@ -214,20 +238,32 @@ final response = await http.post(
                                 color: Colors.black.withOpacity(0.2),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
-                              )
+                              ),
                             ],
                           ),
                           child: Center(
-                            child: _isLoading 
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.save_outlined, color: Colors.white),
-                                    SizedBox(width: 10),
-                                    Text("Save Customer", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                            child: _isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.save_outlined,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        "Save Customer",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                           ),
                         ),
                       ),
@@ -254,7 +290,13 @@ final response = await http.post(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,7 +305,14 @@ final response = await http.post(
             children: [
               Icon(icon, color: const Color(0xFF2563EB), size: 20),
               const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -275,9 +324,18 @@ final response = await http.post(
               hintStyle: const TextStyle(color: Colors.grey),
               filled: true,
               fillColor: Colors.grey[50],
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 15,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[200]!),
+              ),
             ),
           ),
         ],

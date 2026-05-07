@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config.dart'; // ✅ ADDED
 
 class AddAccountScreen extends StatefulWidget {
   final int bankId;
@@ -12,7 +13,7 @@ class AddAccountScreen extends StatefulWidget {
 }
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
-    final TextEditingController _balanceController = TextEditingController();
+  final TextEditingController _balanceController = TextEditingController();
   String? _selectedAccountType;
   bool _isLoading = false;
 
@@ -27,11 +28,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     _loadAllCustomers();
   }
 
-  // جلب كل العملاء
   Future<void> _loadAllCustomers() async {
     try {
       final response = await http.get(
-        Uri.parse("http://127.0.0.1:8080/api/customers/all")
+        Uri.parse("${AppConfig.baseUrl}/api/customers/all"), // ✅ FIXED
       );
 
       if (response.statusCode == 200) {
@@ -48,7 +48,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
-  // إرسال طلب إنشاء الحساب (التعديل هنا لربط الـ Hibernate صح)
   Future<void> _createAccount() async {
     if (_selectedCustomerId == null || _selectedAccountType == null || _balanceController.text.isEmpty) {
       _showSnackBar("Please fill all fields!", Colors.orange);
@@ -58,21 +57,18 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // بناء الـ JSON كـ Nested Objects لإجبار السيرفر على جلب بيانات العميل كاملة
       final Map<String, dynamic> payload = {
         "accountType": _selectedAccountType,
         "balance": double.tryParse(_balanceController.text) ?? 0.0,
         "currency": "EGP",
         "status": "Active",
         "openedat": DateTime.now().toIso8601String(),
-        
-        // الربط بالعميل ككائن يحتوي على الـ ID
         "customerID": _selectedCustomerId,
-        "bankID": widget.bankId
+        "bankID": widget.bankId,
       };
 
       final response = await http.post(
-        Uri.parse("http://127.0.0.1:8080/api/account"),
+        Uri.parse("${AppConfig.baseUrl}/api/account"), // ✅ FIXED
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
@@ -118,7 +114,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      // Dropdown للعملاء
                       _buildCard(
                         label: "Select Customer",
                         icon: Icons.person_search_outlined,
@@ -136,27 +131,21 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           decoration: _inputDecoration(),
                         ),
                       ),
-                      
                       const SizedBox(height: 20),
-
-                      // Dropdown لنوع الحساب
                       _buildCard(
                         label: "Account Type",
                         icon: Icons.account_balance_wallet_outlined,
                         child: DropdownButtonFormField<String>(
                           value: _selectedAccountType,
                           hint: const Text("Select type"),
-                          items: _accountTypes.map((s) => 
-                            DropdownMenuItem(value: s, child: Text(s.toUpperCase()))
-                          ).toList(),
+                          items: _accountTypes
+                              .map((s) => DropdownMenuItem(value: s, child: Text(s.toUpperCase())))
+                              .toList(),
                           onChanged: (v) => setState(() => _selectedAccountType = v),
                           decoration: _inputDecoration(),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      // حقل الرصيد
                       _buildCard(
                         label: "Initial Balance (EGP)",
                         icon: Icons.monetization_on_outlined,
@@ -166,13 +155,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                           decoration: _inputDecoration(hint: "0.00"),
                         ),
                       ),
-
                       const SizedBox(height: 40),
-
-                      _isLoading 
-                        ? const CircularProgressIndicator(color: Color(0xFF2D7CFF))
-                        : _buildSubmitButton(),
-                      
+                      _isLoading
+                          ? const CircularProgressIndicator(color: Color(0xFF2D7CFF))
+                          : _buildSubmitButton(),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -184,8 +170,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       ),
     );
   }
-
-  // --- UI Helpers ---
 
   Widget _buildHeader() {
     return Container(
@@ -212,14 +196,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
             ),
           ),
           const SizedBox(height: 25),
-          const Text(
-            "Account Registration",
-            style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
-          ),
-          const Text(
-            "Link a customer to this bank office",
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
+          const Text("Account Registration",
+              style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+          const Text("Link a customer to this bank office",
+              style: TextStyle(color: Colors.white70, fontSize: 14)),
         ],
       ),
     );
@@ -231,9 +211,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

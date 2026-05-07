@@ -49,8 +49,8 @@ public class Bank implements Serializable {
     private String country;
     @Column(name = "status")
     private String status;
-    @OneToMany(mappedBy = "bankID")
-    private Collection<Account> accountCollection;
+   @OneToMany(mappedBy = "bankID", cascade = CascadeType.ALL, orphanRemoval = true)
+private Collection<Account> accountCollection;
     @ManyToOne
     @JoinColumn(name = "CentralBank_ID", nullable = false)
     private Centralbank centralBankID;
@@ -73,6 +73,7 @@ public class Bank implements Serializable {
     public static long getSerialVersionUID() {
         return serialVersionUID;
     }
+    
 
     public Centralbank getCentralBank() {
         return centralBankID;
@@ -140,7 +141,6 @@ public class Bank implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Bank)) {
             return false;
         }
@@ -150,6 +150,7 @@ public class Bank implements Serializable {
         }
         return true;
     }
+    
 
     @Override
     public String toString() {
