@@ -54,7 +54,35 @@ public class BankResource {
             return Response.serverError().entity("Error adding bank: " + e.getMessage()).build();
         }
     }
+    // ================= CARD ENDPOINTS =================
 
+@POST
+@Path("/card")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response addCard(Card card) {
+    try {
+        // التأكد من وضع تاريخ الإنشاء تلقائياً إذا لم يرسل
+        if (card.getCreatedAt() == null) {
+            card.setCreatedAt(new java.util.Date());
+        }
+        
+        service.insertCard(card); 
+        
+        return Response.status(Response.Status.CREATED)
+                .entity(card)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+                .header("Access-Control-Allow-Headers", "Content-Type")
+                .build();
+    } catch (Exception e) {
+        e.printStackTrace();
+        return Response.serverError()
+                .entity("Error adding card: " + e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    }
+}
     // ================= CUSTOMER ENDPOINTS =================
 
     @GET
@@ -349,6 +377,20 @@ public Response getCustomersByRiskLevel() {
                 .build();
     } catch (Exception e) {
         return Response.serverError().entity(e.getMessage()).build();
+    }
+}
+@GET
+@Path("/customer/{id}/accounts")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getCustomerAccounts(@PathParam("id") int id) {
+    try {
+        return Response.ok(service.getAccountsByCustomerId(id))
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+    } catch (Exception e) {
+        return Response.serverError()
+                .entity(e.getMessage())
+                .build();
     }
 }
 }

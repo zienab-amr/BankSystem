@@ -12,8 +12,8 @@ public class BankSystem {
 
 BankService service = new BankService();
 try {
-    DataSeeder seeder = new DataSeeder(service);
-    seeder.seed();
+   // DataSeeder seeder = new DataSeeder(service);
+   // seeder.seed();
     System.out.println("--- All Data Inserted Successfully! ---");
 } catch (Exception e) {
     System.out.println("Seeding skipped: " + e.getMessage());

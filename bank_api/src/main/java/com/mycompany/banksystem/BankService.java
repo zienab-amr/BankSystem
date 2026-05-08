@@ -49,20 +49,46 @@ public class BankService {
         }
     }
     
-    public void insertCard(Card card) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            em.persist(card); 
-            em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
-        } finally {
-            em.close();
+   
+   public void insertCard(Card card) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        em.getTransaction().begin();
+
+        // 1. التأكد أولاً أن البطاقة غير موجودة مسبقاً (عن طريق الرقم مثلاً)
+        String checkQuery = "SELECT COUNT(c) FROM Card c WHERE c.maskedNumber = :num";
+        Long count = em.createQuery(checkQuery, Long.class)
+                      .setParameter("num", card.getMaskedNumber())
+                      .getSingleResult();
+
+        if (count > 0) {
+            System.out.println("⚠️ Card already exists with this number!");
+            // يمكنك رمي Exception هنا ليعرف الـ Resource أن الإضافة فشلت بسبب التكرار
+            throw new RuntimeException("Card already exists");
         }
+
+        // 2. التحقق من وجود الحساب المرتبط بالبطاقة
+        if (card.getAccountID() != null && card.getAccountID().getAccountID() != null) {
+            Account account = em.find(Account.class, card.getAccountID().getAccountID());
+            if (account != null) {
+                card.setAccountID(account);
+            }
+        }
+
+        // 3. الإضافة إذا لم تكن موجودة
+        em.persist(card); 
+        em.getTransaction().commit();
+        System.out.println("✅ Card inserted successfully!");
+        
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        e.printStackTrace();
+        throw e; 
+    } finally {
+        em.close();
     }
-    
+}
+   
     public void insertCentralBank(Centralbank centralbank) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -504,4 +530,17 @@ public List<Map<String, Object>> getCustomersByRiskLevel() {
             System.out.println("EntityManagerFactory closed successfully.");
         }
     }
+   public List<Account> getAccountsByCustomerId(int customerId) {
+    EntityManager em = emf.createEntityManager();
+    try {
+        String jpql = "SELECT a FROM Account a WHERE a.customerID.customerID = :id";
+
+        return em.createQuery(jpql, Account.class)
+                .setParameter("id", customerId)
+                .getResultList();
+
+    } finally {
+        em.close();
+    }
+}
 }

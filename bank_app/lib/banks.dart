@@ -1,3 +1,4 @@
+import 'package:bank_app/CustomerAccountsScreen.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -501,6 +502,19 @@ if (ctx.mounted) Navigator.pop(ctx);
               child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () async {
+              final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddCustomerScreen()));
+              if (result == true) _refresh();
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.person_add_alt_1, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -793,22 +807,7 @@ Future<List<Map<String, dynamic>>> fetchCustomersByRiskLevel() async {
                     children: [
                       Row(
                         children: [
-                          _topActionButton(
-                            label: "Add\nCustomer",
-                            icon: Icons.person_add_alt_1_outlined,
-                            color: const Color(0xFF10B981),
-                            onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const AddCustomerScreen()),
-                              );
-                              if (result == true) {
-                                _loadCustomersForBank();
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          _topActionButton(
+                           _topActionButton(
                             label: "Add Account",
                             icon: Icons.credit_card,
                             color: const Color(0xFF3B82F6),
@@ -851,6 +850,7 @@ Future<List<Map<String, dynamic>>> fetchCustomersByRiskLevel() async {
                             .map((customer) => CustomerCard(
                                   customer: customer,
                                   onRefresh: _loadCustomersForBank,
+                                  bankId: widget.bankId,
                                 ))
                             .toList(),
                       const SizedBox(height: 25),
@@ -1253,17 +1253,19 @@ _analyticsButton(
 }
 
 // ─────────────────────────────────────────
-// CUSTOMER CARD WIDGET
+// CUSTOMER CARD WIDGET (UPDATED WITH ADD CARD BUTTON)
 // ─────────────────────────────────────────
 
 class CustomerCard extends StatelessWidget {
   final Customer customer;
   final VoidCallback onRefresh;
+  final String bankId;
 
   const CustomerCard({
     super.key,
     required this.customer,
     required this.onRefresh,
+    required this.bankId,
   });
 
   void _showDeleteConfirmationDialog(BuildContext context) {
@@ -1308,70 +1310,136 @@ class CustomerCard extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
+ 
+
+ @override
+Widget build(BuildContext context) {
+  return InkWell(
+    // الانتقال لصفحة الحسابات عند الضغط على الكارت
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CustomerAccountsScreen(
+            customerId: customer.id.toString(), // تأكد أن الـ ID متاح
+            customerName: "${customer.firstName} ${customer.lastName}",
+          ),
+        ),
+      );
+    },
+    borderRadius: BorderRadius.circular(20),
+    child: Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // معلومات العميل
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("${customer.firstName} ${customer.lastName}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(customer.phone, style: TextStyle(color: Colors.grey[600])),
+                  Text(
+                    "${customer.firstName} ${customer.lastName}",
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.perm_identity, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text("ID: ${customer.id}", style: TextStyle(color: Colors.grey[600])),
+                    ],
+                  ),
                 ],
               ),
+              // أزرار التحكم (تعديل وحذف)
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: () {
+                  IconButton(
+                    icon: Icon(Icons.edit_note, color: Colors.blue[700]),
+                    onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => EditCustomerScreen(customer: customer)),
+                        MaterialPageRoute(
+                          builder: (context) => EditCustomerScreen(customer: customer),
+                        ),
                       );
                     },
-                    child: Icon(Icons.edit_note, color: Colors.blue[700]),
                   ),
-                  const SizedBox(width: 10),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () => _showDeleteConfirmationDialog(context),
                   ),
+                  // سهم صغير ليوضح أن الكارت قابل للضغط
+                  const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                 ],
               )
             ],
           ),
           const SizedBox(height: 15),
+          // صناديق المعلومات المختصرة
           Row(
             children: [
-              _infoBox("Email", customer.email, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
+              Expanded(
+                child: _infoBox(
+                  "Email", 
+                  customer.email, 
+                  const Color(0xFFEFF6FF), 
+                  const Color(0xFF2563EB)
+                ),
+              ),
               const SizedBox(width: 10),
-              _infoBox("Phone", customer.phone, const Color(0xFFF0FDF4), const Color(0xFF16A34A)),
+              Expanded(
+                child: _infoBox(
+                  "Phone", 
+                  customer.phone, 
+                  const Color(0xFFF0FDF4), 
+                  const Color(0xFF16A34A)
+                ),
+              ),
             ],
           )
         ],
       ),
-    );
-  }
-
-  Widget _infoBox(String label, String value, Color bg, Color textCol) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          children: [
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
+
+Widget _infoBox(String label, String value, Color bg, Color textCol) {
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: textCol,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}}
