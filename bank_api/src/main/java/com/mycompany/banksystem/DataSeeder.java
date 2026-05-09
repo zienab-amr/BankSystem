@@ -97,29 +97,30 @@ public class DataSeeder {
             }
 
             // ================= CARDS =================
-            String[] cardTypes = {"debit", "credit", "prepaid"};
+String[] cardTypes = {"debit", "credit", "prepaid"};
 
-            for (int i = 1; i <= 200; i++) {
+for (int i = 1; i <= 200; i++) {
 
-                Account acc = accounts.get(random.nextInt(accounts.size()));
+    Account acc = accounts.get(random.nextInt(accounts.size()));
+    String type = cardTypes[random.nextInt(cardTypes.length)];
 
-                String type = cardTypes[random.nextInt(cardTypes.length)];
+    String plainCardNumber = String.format("44440000000%05d", i); 
 
-                Card card = new Card(
-                        type,
-                        "4444-xxxx-" + i,
-                        new Date(),
-                        "hash" + i,
-                        "active",
-                        BigDecimal.valueOf(5000 + random.nextInt(50000)),
-                        new Date(),
-                        acc
-                );
+    Card card = new Card(
+            type,
+            plainCardNumber, 
+            new Date(),
+            "123", 
+            "active",
+            BigDecimal.valueOf(5000 + random.nextInt(50000)),
+            new Date(),
+            acc
+    );
 
-                service.insertCard(card);
-                cards.add(card);
-                acc.addCard(card);
-            }
+    service.insertCard(card);
+    cards.add(card);
+    acc.addCard(card);
+}
 
             System.out.println("=== SEEDING DONE ===");
 

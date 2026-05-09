@@ -51,7 +51,7 @@ public class Bank implements Serializable {
     private String status;
    @OneToMany(mappedBy = "bankID", cascade = CascadeType.ALL, orphanRemoval = true)
 private Collection<Account> accountCollection;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)  
     @JoinColumn(name = "CentralBank_ID", nullable = false)
     private Centralbank centralBankID;
     public Bank() {

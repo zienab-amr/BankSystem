@@ -1,20 +1,23 @@
 package com.mycompany.banksystem;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.util.List;
 import java.util.Map;
+import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
 @Path("/") 
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class BankResource {
-
-    private final BankService service = new BankService();
-
+        private final BankService service = new BankService();
     @OPTIONS
     @Path("{path : .*}")
     public Response options() {
@@ -390,6 +393,142 @@ public Response getCustomerAccounts(@PathParam("id") int id) {
     } catch (Exception e) {
         return Response.serverError()
                 .entity(e.getMessage())
+                .build();
+    }
+}
+
+@POST
+@Path("/validate")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response validateCard(CardValidationRequest request) {
+    CardValidationResponse response = new CardValidationResponse();
+
+    try {
+
+        Card card = service.findCard(request.getCardNumber());
+
+        if (card == null) {
+
+            System.out.println(" Card not found");
+
+            response.setExist(false);
+
+            return Response.ok(response).build();
+        }
+
+        System.out.println(" Card Found");
+
+        response.setExist(true);
+
+        // STATUS
+        String status = card.getStatus();
+
+        System.out.println("DB Status = " + status);
+
+        response.setActive(
+            status != null &&
+            "ACTIVE".equalsIgnoreCase(status)
+        );
+
+        response.setBlocked(
+            status != null &&
+            "BLOCKED".equalsIgnoreCase(status)
+        );
+
+        // EXPIRY
+        if (card.getExpiryDate() != null) {
+
+            System.out.println("DB Expiry = " + card.getExpiryDate());
+
+            response.setExpired(
+                card.getExpiryDate().before(new java.util.Date())
+            );
+
+        } else {
+
+            System.out.println(" Expiry Date is NULL");
+
+            response.setExpired(true);
+        }
+
+        // EXPIRY MATCH
+        if (request.getExprDate() != null &&
+            !request.getExprDate().isEmpty() &&
+            card.getExpiryDate() != null) {
+
+            java.time.LocalDate requestDate =
+                java.time.LocalDate.parse(request.getExprDate());
+
+            java.time.LocalDate dbDate =
+                new java.sql.Date(
+                    card.getExpiryDate().getTime()
+                ).toLocalDate();
+
+            boolean isMatched =
+                requestDate.getYear() == dbDate.getYear()
+                &&
+                requestDate.getMonthValue() == dbDate.getMonthValue();
+
+            response.setExpiryMatched(isMatched);
+
+            System.out.println("ExpiryMatched = " + isMatched);
+
+        } else {
+
+            response.setExpiryMatched(false);
+
+            System.out.println("Expiry Match Failed");
+        }
+
+        // PHONE MATCH
+        boolean isPhoneMatched = false;
+
+        if (card.getAccountID() != null &&
+            card.getAccountID().getCustomerID() != null &&
+            card.getAccountID().getCustomerID().getPhone() != null) {
+
+            String dbPhone = card.getAccountID()
+                                 .getCustomerID()
+                                 .getPhone()
+                                 .replace("+2", "")
+                                 .replace(" ", "")
+                                 .trim();
+
+            String requestPhone = request.getPhoneNumber()
+                                         .replace("+2", "")
+                                         .replace(" ", "")
+                                         .trim();
+
+            System.out.println("DB Phone = " + dbPhone);
+            System.out.println("Request Phone = " + requestPhone);
+
+            isPhoneMatched = dbPhone.equals(requestPhone);
+        }
+
+        response.setPhoneMatched(isPhoneMatched);
+
+        try {
+
+            ObjectMapper mapper = new ObjectMapper();
+
+            String json = mapper.writeValueAsString(response);
+
+            System.out.println("FINAL JSON = " + json);
+
+        } catch (Exception ex) {
+
+            ex.printStackTrace();
+        }
+
+        return Response.ok(response).build();
+
+    } catch (Exception e) {
+
+        e.printStackTrace();
+
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity("Internal Server Error: " + e.getMessage())
                 .build();
     }
 }
