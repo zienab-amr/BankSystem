@@ -402,7 +402,8 @@ public class BankService {
     public List<Map<String, Object>> getTotalBalancePerBank() {
         EntityManager em = emf.createEntityManager();
         try {
-            String jpql = "SELECT b.bankname, SUM(a.balance) FROM Account a JOIN a.bankID b GROUP BY b.bankname";
+            String jpql = "SELECT b.bankname, SUM(a.balance)"
+                    + " FROM Account a JOIN a.bankID b GROUP BY b.bankname";
             List<Object[]> results = em.createQuery(jpql).getResultList();
             List<Map<String, Object>> response = new ArrayList<>();
             for (Object[] r : results) {
@@ -416,11 +417,14 @@ public class BankService {
             em.close();
         }
     }
+    
 
     public List<Map<String, Object>> getVIPCustomers(BigDecimal minBalance) {
         EntityManager em = emf.createEntityManager();
         try {
-            String jpql = "SELECT c.fname, c.lname, a.balance, a.accountType FROM Account a JOIN a.customerID c WHERE a.balance >= :balance";
+            String jpql = "SELECT c.fname, c.lname, a.balance, a.accountType"
+                    + " FROM Account a JOIN a.customerID c"
+                    + " WHERE a.balance >= :balance";
             List<Object[]> results = em.createQuery(jpql).setParameter("balance", minBalance).getResultList();
             List<Map<String, Object>> response = new ArrayList<>();
             for (Object[] r : results) {
@@ -440,7 +444,9 @@ public class BankService {
     public List<Map<String, Object>> rankBanksByPerformance() {
         EntityManager em = emf.createEntityManager();
         try {
-            String jpql = "SELECT b.bankname, COUNT(a), SUM(a.balance) FROM Bank b LEFT JOIN b.accountCollection a GROUP BY b.bankname ORDER BY SUM(a.balance) DESC";
+            String jpql = "SELECT b.bankname, COUNT(a), SUM(a.balance) "
+                    + "FROM Bank b LEFT JOIN b.accountCollection a "
+                    + "GROUP BY b.bankname ORDER BY SUM(a.balance) DESC";
             List<Object[]> results = em.createQuery(jpql).getResultList();
             List<Map<String, Object>> response = new ArrayList<>();
             int rank = 1;
@@ -628,13 +634,14 @@ public List<Map<String, Object>> getCustomersByRiskLevel() {
             System.out.println("EntityManagerFactory closed successfully.");
         }
     }
-   public List<Account> getAccountsByCustomerId(int customerId) {
+   public List<Account> getAccountsByCustomerId(int customerId, int bankId) {
     EntityManager em = emf.createEntityManager();
     try {
-        String jpql = "SELECT a FROM Account a WHERE a.customerID.customerID = :id";
+        String jpql = "SELECT a FROM Account a WHERE a.customerID.customerID = :id AND a.bankID.bankID = :bankId";
 
         return em.createQuery(jpql, Account.class)
                 .setParameter("id", customerId)
+                .setParameter("bankId", bankId)
                 .getResultList();
 
     } finally {

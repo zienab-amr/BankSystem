@@ -423,9 +423,9 @@ public Response getCustomersByRiskLevel() {
 @GET
 @Path("/customer/{id}/accounts")
 @Produces(MediaType.APPLICATION_JSON)
-public Response getCustomerAccounts(@PathParam("id") int id) {
+public Response getCustomerAccounts(@PathParam("id") int id,@QueryParam("bankId") int bankId) {
     try {
-        return Response.ok(service.getAccountsByCustomerId(id))
+        return Response.ok(service.getAccountsByCustomerId(id,bankId))
                 .header("Access-Control-Allow-Origin", "*")
                 .build();
     } catch (Exception e) {
@@ -434,6 +434,7 @@ public Response getCustomerAccounts(@PathParam("id") int id) {
                 .build();
     }
 }
+
 
 @POST
 @Path("/validate")
