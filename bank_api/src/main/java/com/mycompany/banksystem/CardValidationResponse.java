@@ -4,6 +4,8 @@
  */
 package com.mycompany.banksystem;
 
+import java.math.BigDecimal;
+
 /**
  *
  * @author Royal
@@ -14,8 +16,12 @@ public class CardValidationResponse {
     private boolean active;
     private boolean expired;
     private boolean blocked;
+    private boolean frozen;
     private boolean expiryMatched;
     private boolean phoneMatched;
+    private BigDecimal balance; 
+    private String cardType; 
+
 
     public boolean isExist() {
         return exist;
@@ -64,4 +70,30 @@ public class CardValidationResponse {
     public void setPhoneMatched(boolean phoneMatched) {
         this.phoneMatched = phoneMatched;
     }
+    
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    public void setFrozen(boolean frozen) {
+        this.frozen = frozen;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public String getCardType() {
+        return cardType;
+    }
+
+    public void setCardType(String cardType) {
+        this.cardType = cardType;
+    }
+    
+    
 }

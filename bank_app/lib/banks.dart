@@ -1321,7 +1321,8 @@ Widget build(BuildContext context) {
         context,
         MaterialPageRoute(
           builder: (context) => CustomerAccountsScreen(
-            customerId: customer.id.toString(), // تأكد أن الـ ID متاح
+            customerId: customer.id.toString(),
+            bankId: bankId, // تأكد أن الـ ID متاح
             customerName: "${customer.firstName} ${customer.lastName}",
           ),
         ),

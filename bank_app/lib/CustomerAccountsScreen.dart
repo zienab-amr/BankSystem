@@ -7,11 +7,13 @@ import 'add_card_screen.dart';
 class CustomerAccountsScreen extends StatefulWidget {
   final String customerId;
   final String customerName;
+  final String bankId;
 
   const CustomerAccountsScreen({
     super.key, 
     required this.customerId, 
-    required this.customerName
+    required this.customerName,
+    required this.bankId,
   });
 
   @override
@@ -31,9 +33,8 @@ class _CustomerAccountsScreenState extends State<CustomerAccountsScreen> {
   Future<void> _fetchAccounts() async {
     try {
       final response = await http.get(
-        Uri.parse('${AppConfig.baseUrl}/api/customer/${widget.customerId}/accounts'),
-      );
-      if (response.statusCode == 200) {
+      Uri.parse('${AppConfig.baseUrl}/api/customer/${widget.customerId}/accounts?bankId=${widget.bankId}'));
+            if (response.statusCode == 200) {
         setState(() {
           _accounts = jsonDecode(response.body);
           _isLoading = false;

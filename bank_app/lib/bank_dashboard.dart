@@ -27,7 +27,7 @@ class _Bank2DashboardScreenState extends State<Bank2DashboardScreen> {
 
   Future<void> _deleteCustomer(int id) async {
     try {
-      final url = Uri.parse("${AppConfig.baseUrl}/api/customers/$id"); // ✅ FIXED
+      final url = Uri.parse("${AppConfig.baseUrl}/api/customers/$id");
 
       print("DELETE URL: $url");
 
