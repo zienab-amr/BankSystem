@@ -31,9 +31,9 @@ public class BankService {
     }
     
     public void insertBank(Bank bank) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
+    EntityManager em = emf.createEntityManager();
+    try {
+        em.getTransaction().begin();
 
         // Check Swift Code
         List results = em.createNativeQuery(
@@ -46,26 +46,26 @@ public class BankService {
             throw new IllegalArgumentException("Swift code already exists for another bank");
         }
 
-            Centralbank centralBank = em.find(Centralbank.class, 1);
-            if (centralBank != null) {
-                bank.setCentralBank(centralBank);
-            }
+        Centralbank centralBank = em.find(Centralbank.class, 1);
+        if (centralBank != null) {
+            bank.setCentralBank(centralBank);
+        }
 
-            em.persist(bank); 
-            em.getTransaction().commit();
-            System.out.println("✅ Bank inserted successfully!");
+        em.persist(bank);
+        em.getTransaction().commit();
+        System.out.println("✅ Bank inserted successfully!");
 
     } catch (IllegalArgumentException e) {
         if (em.getTransaction().isActive()) em.getTransaction().rollback();
         throw e;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        e.printStackTrace();
         throw new RuntimeException(e);
-        } finally {
-            em.close();
-        }
+    } finally {
+        em.close();
     }
+}
     
    
    public void insertCard(Card card) {
@@ -126,9 +126,9 @@ public class BankService {
     }
 
     public void insertCustomer(Customer customer) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
+    EntityManager em = emf.createEntityManager();
+    try {
+        em.getTransaction().begin();
 
         // Check National ID
         List<Customer> dupNationalId = em.createQuery(
@@ -154,21 +154,21 @@ public class BankService {
             throw new IllegalArgumentException("Phone already exists");
         }
 
-            em.persist(customer); 
-            em.getTransaction().commit();
-            System.out.println("Customer inserted successfully!");
+        em.persist(customer);
+        em.getTransaction().commit();
+        System.out.println("Customer inserted successfully!");
 
     } catch (IllegalArgumentException e) {
         if (em.getTransaction().isActive()) em.getTransaction().rollback();
         throw e;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        e.printStackTrace();
         throw new RuntimeException(e);
-        } finally {
-            em.close();
-        }
+    } finally {
+        em.close();
     }
+}
     
     public void updateAccount(Account account) {
         EntityManager em = emf.createEntityManager();
@@ -219,9 +219,9 @@ public class BankService {
     }
 
     public void updateCustomer(Customer customer) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
+    EntityManager em = emf.createEntityManager();
+    try {
+        em.getTransaction().begin();
 
         // Check National ID
         List<Customer> dupNationalId = em.createQuery(
@@ -249,25 +249,25 @@ public class BankService {
             throw new IllegalArgumentException("Phone already exists for another customer");
         }
 
-            em.merge(customer); 
-            em.getTransaction().commit();
-            System.out.println("Customer updated successfully!");
+        em.merge(customer);
+        em.getTransaction().commit();
+        System.out.println("Customer updated successfully!");
 
     } catch (IllegalArgumentException e) {
         if (em.getTransaction().isActive()) em.getTransaction().rollback();
         throw e;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        e.printStackTrace();
         throw new RuntimeException(e);
-        } finally {
-            em.close();
-        }
+    } finally {
+        em.close();
     }
+}
 
     public void updateBank(int id, String name, String swift, String status) {
-        EntityManager em = emf.createEntityManager();
-        try {
+    EntityManager em = emf.createEntityManager();
+    try {
         // Check swift code uniqueness
         List results = em.createNativeQuery(
             "SELECT Bank_ID FROM bank WHERE swift_code = ? AND Bank_ID != ?")
@@ -279,8 +279,8 @@ public class BankService {
             throw new IllegalArgumentException("Swift code already exists for another bank");
         }
 
-            em.getTransaction().begin();
-            int rows = em.createNativeQuery(
+        em.getTransaction().begin();
+        int rows = em.createNativeQuery(
             "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?")
             .setParameter(1, name)
             .setParameter(2, swift)
@@ -288,20 +288,20 @@ public class BankService {
             .setParameter(4, id)
             .executeUpdate();
 
-            em.getTransaction().commit();
-            System.out.println("✅ Bank updated! ID: " + id + " | Rows affected: " + rows);
+        em.getTransaction().commit();
+        System.out.println("✅ Bank updated! ID: " + id + " | Rows affected: " + rows);
 
     } catch (IllegalArgumentException e) {
         if (em.getTransaction().isActive()) em.getTransaction().rollback();
         throw e;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        } finally {
-            em.close();
-        }
+    } catch (Exception e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        e.printStackTrace();
+        throw new RuntimeException(e);
+    } finally {
+        em.close();
     }
+}
 
     public void deleteBank(int id) {
         EntityManager em = emf.createEntityManager();
@@ -649,69 +649,35 @@ public List<Map<String, Object>> getCustomersByRiskLevel() {
     }
 }
    public Card findCard(String cardNumber) {
+
     EntityManager em = emf.createEntityManager();
+
     try {
+
         if (cardNumber == null || cardNumber.trim().isEmpty()) {
             return null;
         }
-        
-        String normalized = cardNumber.replaceAll("\\s+", "").trim();
-        
-        String sql = "SELECT c.Card_ID, c.Card_type, c.Masked_number, c.expiry_date, " +
-                     "c.cvv_hash, c.status, c.daily_limit, c.created_at, c.Account_ID " +
-                     "FROM card c WHERE REPLACE(c.Masked_number, ' ', '') = ?";
-        
-        Object[] result = (Object[]) em.createNativeQuery(sql)
-            .setParameter(1, normalized)
-            .getSingleResult();
-        
-        if (result == null) return null;
-        
-        Card card = new Card();
-        card.setCardID((Integer) result[0]);
-        card.setCardtype((String) result[1]);
-        card.setMaskedNumber((String) result[2]);
-        card.setExpiryDate((java.util.Date) result[3]);
-        card.setCvvHash((String) result[4]);
-        card.setStatus((String) result[5]);
-        card.setDailyLimit((BigDecimal) result[6]);
-        card.setCreatedAt((java.util.Date) result[7]);
-        
-        if (result[8] != null) {
-            Integer accountId = (Integer) result[8];
-            String accountSql = "SELECT a.Account_ID, c.Customer_ID, c.Phone " +
-                               "FROM account a " +
-                               "LEFT JOIN customer c ON a.Customer_ID = c.Customer_ID " +
-                               "WHERE a.Account_ID = ?";
-            
-            Object[] accountResult = (Object[]) em.createNativeQuery(accountSql)
-                .setParameter(1, accountId)
+
+        String normalized =
+            cardNumber.replaceAll("\\s+", "").trim();
+
+        String jpql =
+            "SELECT c FROM Card c " +
+            "LEFT JOIN FETCH c.accountID a " +
+            "LEFT JOIN FETCH a.customerID " +
+            "WHERE REPLACE(c.maskedNumber, ' ', '') = :num";
+
+        return em.createQuery(jpql, Card.class)
+                .setParameter("num", normalized)
                 .getSingleResult();
-            
-            if (accountResult != null) {
-                Account account = new Account();
-                account.setAccountID((Integer) accountResult[0]);
-                
-                if (accountResult[1] != null) {
-                    Customer customer = new Customer();
-                    customer.setCustomerID((Integer) accountResult[1]);
-                    customer.setPhone((String) accountResult[2]);
-                    account.setCustomerID(customer);
-                }
-                card.setAccountID(account);
-            }
-        }
-        
-        return card;
-        
+
     } catch (NoResultException e) {
-        System.out.println("Card not found: " + cardNumber);
+
+        System.out.println("Card not found");
         return null;
-    } catch (Exception e) {
-        System.out.println("ERROR in findCard: " + e.getMessage());
-        e.printStackTrace();
-        return null;
+
     } finally {
+
         em.close();
     }
 }

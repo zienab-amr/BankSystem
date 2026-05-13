@@ -44,15 +44,15 @@ public class BankResource {
     }
 
     @POST
-    @Path("/add")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response addBank(Bank bank) {
-        try {
-            service.insertBank(bank);
-            return Response.status(Response.Status.CREATED)
-                    .entity(bank)
-                    .header("Access-Control-Allow-Origin", "*")
-                    .build();
+@Path("/add")
+@Consumes(MediaType.APPLICATION_JSON)
+public Response addBank(Bank bank) {
+    try {
+        service.insertBank(bank);
+        return Response.status(Response.Status.CREATED)
+                .entity(bank)
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
 
     } catch (IllegalArgumentException e) {
         return Response.status(Response.Status.CONFLICT)
@@ -60,10 +60,10 @@ public class BankResource {
                 .header("Access-Control-Allow-Origin", "*")
                 .build();
 
-        } catch (Exception e) {
+    } catch (Exception e) {
             return Response.serverError().entity("Error adding bank: " + e.getMessage()).build();
-        }
     }
+}
     // ================= CARD ENDPOINTS =================
 
 @POST
@@ -72,7 +72,6 @@ public class BankResource {
 @Produces(MediaType.APPLICATION_JSON)
 public Response addCard(Card card) {
     try {
-        // التأكد من وضع تاريخ الإنشاء تلقائياً إذا لم يرسل
         if (card.getCreatedAt() == null) {
             card.setCreatedAt(new java.util.Date());
         }
@@ -132,10 +131,9 @@ public Response addCard(Card card) {
 @Produces(MediaType.APPLICATION_JSON)
 public Response addCustomer(Customer customer) {
     try {
-        service.insertCustomer(customer); 
-        
+        service.insertCustomer(customer);
         return Response.status(Response.Status.CREATED)
-                .entity(customer) 
+                .entity(customer)
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
                 .header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
@@ -366,20 +364,20 @@ public Response updateBank(@PathParam("id") int id, Bank bank) {
 
         EntityManager em = service.getEntityManager();
         try {
-        em.getTransaction().begin();
-        em.createNativeQuery(
+            em.getTransaction().begin();
+            em.createNativeQuery(
                 "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?")
-        .setParameter(1, bank.getBankname())
-        .setParameter(2, bank.getSwiftCode())
-        .setParameter(3, bank.getStatus())
-        .setParameter(4, id)
-        .executeUpdate();
-        em.getTransaction().commit();
+                .setParameter(1, bank.getBankname())
+                .setParameter(2, bank.getSwiftCode())
+                .setParameter(3, bank.getStatus())
+                .setParameter(4, id)
+                .executeUpdate();
+            em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw e;
         } finally {
-        em.close();
+            em.close();
         }
 
         System.out.println(" DB updated successfully!");
@@ -459,6 +457,8 @@ public Response validateCard(CardValidationRequest request) {
         System.out.println(" Card Found");
 
         response.setExist(true);
+        
+        response.setCardType(card.getCardtype());
 
         // STATUS
         String status = card.getStatus();
@@ -474,6 +474,19 @@ public Response validateCard(CardValidationRequest request) {
             status != null &&
             "BLOCKED".equalsIgnoreCase(status)
         );
+        response.setFrozen(
+                status != null &&
+                "FREEZE".equalsIgnoreCase(status)
+        );
+        
+        if (card.getAccountID() != null) {
+            BigDecimal currentBalance = card.getAccountID().getBalance();
+            response.setBalance(currentBalance);
+            System.out.println("Card Balance = " + currentBalance);
+        } else {
+            response.setBalance(BigDecimal.ZERO);
+            System.out.println("No linked account found for balance.");
+        }
 
         // EXPIRY
         if (card.getExpiryDate() != null) {
