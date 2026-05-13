@@ -53,6 +53,13 @@ public class BankResource {
                     .entity(bank)
                     .header("Access-Control-Allow-Origin", "*")
                     .build();
+
+    } catch (IllegalArgumentException e) {
+        return Response.status(Response.Status.CONFLICT)
+                .entity(e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+
         } catch (Exception e) {
             return Response.serverError().entity("Error adding bank: " + e.getMessage()).build();
         }
@@ -92,7 +99,7 @@ public Response addCard(Card card) {
     @Path("/customers") // Flutter should call: http://localhost:8080/api/customers?bankId=X
     public Response getCustomersByBank(@QueryParam("bankId") int bankId) {
         try {
-            System.out.println("🔥 API called for Customers with bankId: " + bankId);
+            System.out.println("?API called for Customers with bankId: " + bankId);
             List<Customer> customers = service.getCustomersByBankId(bankId);
             
             return Response.ok(customers).build();
@@ -105,7 +112,7 @@ public Response addCard(Card card) {
     @Path("/customers/all") 
     public Response getAllCustomers() {
         try {
-            System.out.println("🔥 API called: Fetching ALL customers from database");
+            System.out.println(" API called: Fetching ALL customers from database");
             List<Customer> allCustomers = service.getAllCustomers(); // تأكدي إن الميثود دي موجودة في الـ Service
             return Response.ok(allCustomers)
                     .header("Access-Control-Allow-Origin", "*")
@@ -129,10 +136,17 @@ public Response addCustomer(Customer customer) {
         
         return Response.status(Response.Status.CREATED)
                 .entity(customer) 
-                .header("Access-Control-Allow-Origin", "*") // مهم جداً للـ Web
+                .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
                 .header("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
                 .build();
+
+    } catch (IllegalArgumentException e) {
+        return Response.status(Response.Status.CONFLICT)
+                .entity(e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
+                .build();
+
     } catch (Exception e) {
         return Response.serverError()
                 .entity(e.getMessage())
@@ -187,6 +201,12 @@ public Response updateCustomerPUT(@PathParam("id") int id, Customer customer) {
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "PUT, GET, OPTIONS")
                 .header("Access-Control-Allow-Headers", "Content-Type, Accept")
+                .build();
+
+    } catch (IllegalArgumentException e) {
+        return Response.status(Response.Status.CONFLICT)
+                .entity(e.getMessage())
+                .header("Access-Control-Allow-Origin", "*")
                 .build();
 
     } catch (Exception e) {
@@ -328,23 +348,41 @@ public Response updateBank(@PathParam("id") int id, Bank bank) {
         System.out.println(" New swift: " + bank.getSwiftCode());
         System.out.println(" New status: " + bank.getStatus());
 
-        EntityManager em = service.getEntityManager();
-        em.getTransaction().begin();
+        // Check swift code uniqueness
+        EntityManager emCheck = service.getEntityManager();
+        List results = emCheck.createNativeQuery(
+            "SELECT Bank_ID FROM bank WHERE swift_code = ? AND Bank_ID != ?")
+            .setParameter(1, bank.getSwiftCode())
+            .setParameter(2, id)
+            .getResultList();
+        emCheck.close();
 
+        if (!results.isEmpty()) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("Swift code already exists for another bank")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .build();
+        }
+
+        EntityManager em = service.getEntityManager();
+        try {
+        em.getTransaction().begin();
         em.createNativeQuery(
-            "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?"
-        )
+                "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?")
         .setParameter(1, bank.getBankname())
         .setParameter(2, bank.getSwiftCode())
         .setParameter(3, bank.getStatus())
         .setParameter(4, id)
         .executeUpdate();
-
         em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw e;
+        } finally {
         em.close();
+        }
 
         System.out.println(" DB updated successfully!");
-
         return Response.ok(bank)
                 .header("Access-Control-Allow-Origin", "*")
                 .build();

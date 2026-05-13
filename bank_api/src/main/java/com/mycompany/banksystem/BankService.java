@@ -34,17 +34,34 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+
+        // Check Swift Code
+        List results = em.createNativeQuery(
+            "SELECT Bank_ID FROM bank WHERE swift_code = ?")
+            .setParameter(1, bank.getSwiftCode())
+            .getResultList();
+
+        if (!results.isEmpty()) {
+            em.getTransaction().rollback();
+            throw new IllegalArgumentException("Swift code already exists for another bank");
+        }
+
             Centralbank centralBank = em.find(Centralbank.class, 1);
             if (centralBank != null) {
                 bank.setCentralBank(centralBank);
-                System.out.println("✅ CentralBank ID = 1 assigned automatically");
             }
+
             em.persist(bank); 
             em.getTransaction().commit();
             System.out.println("✅ Bank inserted successfully!");
+
+    } catch (IllegalArgumentException e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        throw e;
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
+        throw new RuntimeException(e);
         } finally {
             em.close();
         }
@@ -112,12 +129,42 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+
+        // Check National ID
+        List<Customer> dupNationalId = em.createQuery(
+            "SELECT c FROM Customer c WHERE c.nationalID = :nid",
+            Customer.class)
+            .setParameter("nid", customer.getNationalID())
+            .getResultList();
+
+        if (!dupNationalId.isEmpty()) {
+            em.getTransaction().rollback();
+            throw new IllegalArgumentException("National ID already exists");
+        }
+
+        // Check Phone
+        List<Customer> dupPhone = em.createQuery(
+            "SELECT c FROM Customer c WHERE c.phone = :phone",
+            Customer.class)
+            .setParameter("phone", customer.getPhone())
+            .getResultList();
+
+        if (!dupPhone.isEmpty()) {
+            em.getTransaction().rollback();
+            throw new IllegalArgumentException("Phone already exists");
+        }
+
             em.persist(customer); 
             em.getTransaction().commit();
             System.out.println("Customer inserted successfully!");
+
+    } catch (IllegalArgumentException e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        throw e;
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
+        throw new RuntimeException(e);
         } finally {
             em.close();
         }
@@ -127,8 +174,10 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+            if(account != null){
             em.merge(account); 
             em.getTransaction().commit();
+            }
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
@@ -141,8 +190,10 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+            if(card != null){
             em.merge(card); 
             em.getTransaction().commit();
+            }
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
@@ -155,8 +206,10 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+            if(centralbank != null){
             em.merge(centralbank); 
             em.getTransaction().commit();
+            }
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
@@ -169,26 +222,66 @@ public class BankService {
         EntityManager em = emf.createEntityManager();
         try {
             em.getTransaction().begin();
+
+        // Check National ID
+        List<Customer> dupNationalId = em.createQuery(
+            "SELECT c FROM Customer c WHERE c.nationalID = :nid AND c.customerID != :id",
+            Customer.class)
+            .setParameter("nid", customer.getNationalID())
+            .setParameter("id", customer.getCustomerID())
+            .getResultList();
+
+        if (!dupNationalId.isEmpty()) {
+            em.getTransaction().rollback();
+            throw new IllegalArgumentException("National ID already exists for another customer");
+        }
+
+        // Check Phone
+        List<Customer> dupPhone = em.createQuery(
+            "SELECT c FROM Customer c WHERE c.phone = :phone AND c.customerID != :id",
+            Customer.class)
+            .setParameter("phone", customer.getPhone())
+            .setParameter("id", customer.getCustomerID())
+            .getResultList();
+
+        if (!dupPhone.isEmpty()) {
+            em.getTransaction().rollback();
+            throw new IllegalArgumentException("Phone already exists for another customer");
+        }
+
             em.merge(customer); 
             em.getTransaction().commit();
             System.out.println("Customer updated successfully!");
+
+    } catch (IllegalArgumentException e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        throw e;
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
+        throw new RuntimeException(e);
         } finally {
             em.close();
         }
     }
 
-    // ✅ FIXED: updateBank using Native SQL directly
     public void updateBank(int id, String name, String swift, String status) {
         EntityManager em = emf.createEntityManager();
         try {
-            em.getTransaction().begin();
+        // Check swift code uniqueness
+        List results = em.createNativeQuery(
+            "SELECT Bank_ID FROM bank WHERE swift_code = ? AND Bank_ID != ?")
+            .setParameter(1, swift)
+            .setParameter(2, id)
+            .getResultList();
 
+        if (!results.isEmpty()) {
+            throw new IllegalArgumentException("Swift code already exists for another bank");
+        }
+
+            em.getTransaction().begin();
             int rows = em.createNativeQuery(
-                "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?"
-            )
+            "UPDATE bank SET Bank_name = ?, swift_code = ?, status = ? WHERE Bank_ID = ?")
             .setParameter(1, name)
             .setParameter(2, swift)
             .setParameter(3, status)
@@ -197,6 +290,10 @@ public class BankService {
 
             em.getTransaction().commit();
             System.out.println("✅ Bank updated! ID: " + id + " | Rows affected: " + rows);
+
+    } catch (IllegalArgumentException e) {
+        if (em.getTransaction().isActive()) em.getTransaction().rollback();
+        throw e;
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             e.printStackTrace();
