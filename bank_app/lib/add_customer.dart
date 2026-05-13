@@ -16,6 +16,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nationalIDController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   @override
@@ -29,33 +30,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   }
 
   Future<void> _saveCustomer() async {
-    // التحقق من جميع الحقول
-    if (_fnameController.text.trim().isEmpty) {
-      _showSnackBar("Please enter first name", Colors.orange);
-      return;
-    }
-    if (_lnameController.text.trim().isEmpty) {
-      _showSnackBar("Please enter last name", Colors.orange);
-      return;
-    }
-    if (_emailController.text.trim().isEmpty) {
-      _showSnackBar("Please enter email", Colors.orange);
-      return;
-    }
-    if (!_emailController.text.contains('@')) {
-      _showSnackBar("Please enter valid email", Colors.orange);
-      return;
-    }
-    if (_phoneController.text.trim().isEmpty) {
-      _showSnackBar("Please enter phone number", Colors.orange);
-      return;
-    }
-    if (_nationalIDController.text.trim().isEmpty) {
-      _showSnackBar("Please enter national ID", Colors.orange);
-      return;
-    }
-    if (_nationalIDController.text.length != 14) {
-      _showSnackBar("National ID must be 14 digits", Colors.orange);
+    // Validate all fields before making the request
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -74,7 +50,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
       print("Sending data: ${jsonEncode(customerData)}");
 
-      // استبدلي الجزء ده في كود الـ _saveCustomer
       final response = await http
           .post(
             Uri.parse("${AppConfig.baseUrl}/api/customer"),
@@ -84,15 +59,19 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             },
             body: jsonEncode(customerData),
           )
-          .timeout(const Duration(seconds: 5)); // قللنا الـ timeout شوية
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         _showSnackBar("✅ Customer added successfully!", Colors.green);
         if (mounted) Navigator.pop(context, true);
+      } else {
+        _showSnackBar("❌ Failed to add customer: ${response.statusCode}", Colors.red);
       }
     } catch (e) {
       print("Actual Error: $e");
-      _showSnackBar("❌ Failed to add customer", Colors.red);
+      _showSnackBar("❌ Connection error: $e", Colors.red);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -184,90 +163,93 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 offset: const Offset(0, -25),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildInputField(
-                        label: "First Name",
-                        hint: "Enter first name",
-                        icon: Icons.person_outline,
-                        controller: _fnameController,
-                      ),
-                      const SizedBox(height: 15),
-                      _buildInputField(
-                        label: "Last Name",
-                        hint: "Enter last name",
-                        icon: Icons.person_outline,
-                        controller: _lnameController,
-                      ),
-                      const SizedBox(height: 15),
-                      _buildInputField(
-                        label: "Email Address",
-                        hint: "customer@example.com",
-                        icon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        controller: _emailController,
-                      ),
-                      const SizedBox(height: 15),
-                      _buildInputField(
-                        label: "Phone Number",
-                        hint: "+20 XXX XXX XXXX",
-                        icon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                        controller: _phoneController,
-                      ),
-                      const SizedBox(height: 15),
-                      _buildInputField(
-                        label: "National ID",
-                        hint: "14 digits national ID",
-                        icon: Icons.badge_outlined,
-                        keyboardType: TextInputType.number,
-                        controller: _nationalIDController,
-                      ),
-                      const SizedBox(height: 30),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        _buildInputField(
+                          label: "First Name",
+                          hint: "Enter first name",
+                          icon: Icons.person_outline,
+                          controller: _fnameController,
+                        ),
+                        const SizedBox(height: 15),
+                        _buildInputField(
+                          label: "Last Name",
+                          hint: "Enter last name",
+                          icon: Icons.person_outline,
+                          controller: _lnameController,
+                        ),
+                        const SizedBox(height: 15),
+                        _buildInputField(
+                          label: "Email Address",
+                          hint: "customer@example.com",
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          controller: _emailController,
+                        ),
+                        const SizedBox(height: 15),
+                        _buildInputField(
+                          label: "Phone Number",
+                          hint: "01123456789",
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          controller: _phoneController,
+                        ),
+                        const SizedBox(height: 15),
+                        _buildInputField(
+                          label: "National ID",
+                          hint: "14 digits national ID",
+                          icon: Icons.badge_outlined,
+                          keyboardType: TextInputType.number,
+                          controller: _nationalIDController,
+                        ),
+                        const SizedBox(height: 30),
 
-                      GestureDetector(
-                        onTap: _isLoading ? null : _saveCustomer,
-                        child: Container(
-                          width: double.infinity,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00C853),
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: _isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white,
-                                  )
-                                : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.save_outlined,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        "Save Customer",
-                                        style: TextStyle(
+                        GestureDetector(
+                          onTap: _isLoading ? null : _saveCustomer,
+                          child: Container(
+                            width: double.infinity,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00C853),
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: _isLoading
+                                  ? const CircularProgressIndicator(
+                                      color: Colors.white,
+                                    )
+                                  : const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.save_outlined,
                                           color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          "Save Customer",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -316,9 +298,48 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             ],
           ),
           const SizedBox(height: 15),
-          TextField(
+          TextFormField(
             controller: controller,
             keyboardType: keyboardType,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return "$label is required";
+              }
+
+              // Email validation - Strong regex
+              if (label == "Email Address") {
+                final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                if (!emailRegex.hasMatch(value.trim())) {
+                  return "Enter valid email (e.g., name@example.com)";
+                }
+              }
+
+              // Phone validation - Must be exactly 11 digits
+              if (label == "Phone Number") {
+                final phoneRegex = RegExp(r'^[0-9]{11}$');
+                if (!phoneRegex.hasMatch(value.trim())) {
+                  return "Phone must be exactly 11 digits (numbers only)";
+                }
+              }
+
+              // National ID validation - Must be exactly 14 digits
+              if (label == "National ID") {
+                final nationalRegex = RegExp(r'^[0-9]{14}$');
+                if (!nationalRegex.hasMatch(value.trim())) {
+                  return "National ID must be exactly 14 digits (numbers only)";
+                }
+              }
+
+              // Name validation - Only letters and spaces
+              if (label == "First Name" || label == "Last Name") {
+                final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
+                if (!nameRegex.hasMatch(value.trim())) {
+                  return "Only letters and spaces allowed";
+                }
+              }
+
+              return null;
+            },
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: Colors.grey),
@@ -335,6 +356,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey[200]!),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
               ),
             ),
           ),
